@@ -21,7 +21,7 @@ def windowplots (windows : list) :
 
     for i in range (len (windows)):
         current = np.array (windows [i]).astype (int)
-        axis[i].plot  (current [:,0], current [:,1], current [:,2])
+        axis[i].plot  (current [:,0], current [:,1] )
     plt.show ()
 
 def createwindows (mat, n : int, interval : tuple):

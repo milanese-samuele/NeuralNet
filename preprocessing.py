@@ -14,4 +14,4 @@ def bwfilter (sig) :
    @return     filtered signal
    """
    sos = signal.butter (3, [0.4, 45], 'bp', fs=360, output='sos')
-   return signal.sosfilt (sos, sig)
+   return signal.sosfilt (sos, sig )
