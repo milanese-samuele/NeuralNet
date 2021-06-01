@@ -15,6 +15,10 @@ def test_filter () :
     windowplots (wins)
 
 def test_arch () :
+    full = readcsv ("./mitbih_database/201.csv")
+    full = bwfilter (full)
+    nots = full [720:3600, 1:3]
+    # plt.plot (range (len (nots)), nots )
+    # plt.show ()
     x = RNN ()
-    x.update_state ([0.2,0.3])
-    print (x.output ())
+    x.test_run (nots)

@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 ## Globals for parameter tuning
 HD = 100 # Hidden layer dimension
 ID = 2   # Input layer dimension
-OD = 2   # Output layer dimension
+OD = 1   # Output layer dimension
 
 class RNN:
     """
@@ -51,4 +51,17 @@ class RNN:
         self.xvec = RNN.sigmoid (self.Whid.dot (self.xvec) + self.Win.dot (ivec) + self.bvec)
 
     def output (self) -> np.ndarray :
+        """
+        @brief      compute output function
+
+        @return     output signal
+        """
         return RNN.sigmoid (self.Wout.dot (self.xvec))
+
+    def test_run (self, isig : np.ndarray) :
+        osig = []
+        for tup in isig :
+            self.update_state (tup)
+            osig.append (self.output ())
+        print (osig)
+        print (self)
