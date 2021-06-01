@@ -21,7 +21,9 @@ def windowplots (windows : list) :
 
     for i in range (len (windows)):
         current = np.array (windows [i]).astype (int)
-        axis[i].plot  (current [:,0], current [:,1] )
+        axis[i].plot  (current [:,0], current [:,1], label = 'MLII')
+        axis[i].plot  (current [:,0], current [:,2], label = 'V5')
+    plt.legend ()
     plt.show ()
 
 def createwindows (mat, n : int, interval : tuple):
@@ -36,3 +38,14 @@ def createwindows (mat, n : int, interval : tuple):
    for i in np.arange (0, len (slice), step):
        windows.append (slice [i:i+step-1])
    return windows
+
+def extractAnnotations (fname : str) :
+    mat = np.loadtxt (fname, dtype=str, skiprows=1, usecols = (1,2))
+    newt = [int (nstr) for nstr in mat [:,0]]
+    newa = [1 if x == 'A' else 0 for x in mat [:,1]]
+    ret = []
+    ret.append (newt)
+    ret.append (newa)
+    print (set (mat [:,1]))
+    print (len (ret [1]))
+    ## TODO make array as big as input signal for teaching
