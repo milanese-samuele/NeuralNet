@@ -1,5 +1,6 @@
 ## Collection of tests for development
 import numpy as np
+from rnn import RNN
 from utils import *
 from preprocessing import *
 
@@ -12,3 +13,8 @@ def test_filter () :
 
     wins = createwindows (full [FS:FS*60], 4, [FS,FS*60])
     windowplots (wins)
+
+def test_arch () :
+    x = RNN ()
+    x.update_state ([0.2,0.3])
+    print (x.output ())
