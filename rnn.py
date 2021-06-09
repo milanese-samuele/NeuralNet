@@ -1,20 +1,22 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy import sparse
 
 ## Globals for parameter tuning
-HD = 100 # Hidden layer dimension
+HD = 10 # Hidden layer dimension
 ID = 2   # Input layer dimension
 OD = 1   # Output layer dimension
+SPARS = 0.2
 
 class RNN:
     """
     @brief      Architecture of the Recurrent Neural Network
     """
-    Whid = np.random.uniform(0, 1, (HD, HD))   # weight matrix of hidden layer
+    Whid = sparse.random (HD, HD, density=SPARS)   # weight matrix of hidden layer
     Win = np.random.uniform (0, 1, (HD, ID))   # weight matrix for input to hidden layer
     Wout = np.random.uniform (0, 1, (OD, HD))  # weight matrix for hidden layer to output level
     xvec = np.random.uniform (0, 1, HD)        # vector of activation values of neurons
-    bvec = np.asarray (HD * [1])               # bias vector
+    bvec = np.asarray (HD * [0])               # bias vector
 
     def sigmoid (vec : np.ndarray) -> np.ndarray :
        """
@@ -60,8 +62,10 @@ class RNN:
 
     def test_run (self, isig : np.ndarray) :
         osig = []
-        for tup in isig :
+        for tup in isig [:720] :
             self.update_state (tup)
             osig.append (self.output ())
-        print (osig)
-        print (self)
+
+        plt.plot (range (len (osig)), osig )
+        plt.show ()
+        # print (self)

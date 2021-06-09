@@ -39,13 +39,8 @@ def createwindows (mat, n : int, interval : tuple):
        windows.append (slice [i:i+step-1])
    return windows
 
-def extractAnnotations (fname : str) :
-    mat = np.loadtxt (fname, dtype=str, skiprows=1, usecols = (1,2))
-    newt = [int (nstr) for nstr in mat [:,0]]
-    newa = [1 if x == 'A' else 0 for x in mat [:,1]]
-    ret = []
-    ret.append (newt)
-    ret.append (newa)
-    print (set (mat [:,1]))
-    print (len (ret [1]))
-    ## TODO make array as big as input signal for teaching
+def extract_annotations (pnumber: int, data_path="./mitbih_database/"):
+    mat = np.loadtxt (data_path + str(pnumber) + "annotations.txt", dtype=str, skiprows=1, usecols = (1,2))
+    print(set(mat[:,1]))
+    mat[:,0] = [int (nstr) for nstr in mat[:,0]]
+    return mat
