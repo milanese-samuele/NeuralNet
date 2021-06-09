@@ -39,8 +39,18 @@ def createwindows (mat, n : int, interval : tuple):
        windows.append (slice [i:i+step-1])
    return windows
 
+def annotations_to_signal(labels):
+    categories = ['N', 'L', 'R', 'A', 'a', 'J', 'S', 'V', 'F', '[', '!', ']', 'e', 'j', 'E', '/', 'f', 'x', 'Q', '|']
+    tsignals = []
+    for l in labels:
+        s = [0] * (len(categories) + 1)
+        s[categories.index(l) if l in categories else len(categories)] = 1
+        tsignals.append(s)
+    return tsignals
+
 def extract_annotations (pnumber: int, data_path="./mitbih_database/"):
     mat = np.loadtxt (data_path + str(pnumber) + "annotations.txt", dtype=str, skiprows=1, usecols = (1,2))
-    print(set(mat[:,1]))
-    mat[:,0] = [int (nstr) for nstr in mat[:,0]]
-    return mat
+    ts = [int (nstr) for nstr in mat[:,0]]
+    sigs = annotations_to_signal(mat[:,1])
+    ret = np.asarray([np.asarray([ts[i], sigs[i]]) for i in range(len(ts))])
+    return ret
