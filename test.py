@@ -3,6 +3,7 @@ import numpy as np
 from rnn import RNN
 from utils import *
 from preprocessing import *
+from sigs import Window
 
 FS = 360 # sample frequency per second
 
@@ -35,15 +36,15 @@ def test_filter () :
     # In ("./mitbih_database/200.csv")
 
 def test_pam () :
+    tmp = window_factory(201)
+    anormal = [win for win in tmp if win.btype != 'N']
+    print (len (anormal))
+    # for win in anormal:
+    #     plt.plot (win.signal [0], win.signal [1])
+    #     plt.plot (win.signal [0], win.signal [2])
+    #     plt.title (win.btype)
+    #     plt.show ()
 
-    wins = preprocess(201)
-    print(wins[0])
-    print(len(wins))
-
-    ## windows = 44 samples before r-peak and 70 before r-peak
-    for win in wins:
-        plt.plot(win[0], win[1])
-        plt.show()
 
 def test_arch () :
     full = readcsv ("./mitbih_database/201.csv")

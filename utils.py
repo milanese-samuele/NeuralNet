@@ -26,21 +26,11 @@ def windowplots (windows : list) :
     plt.legend ()
     plt.show ()
 
-def createwindows (mat, n : int, interval : tuple):
-   """
-   @param      matrix of data, number of windows, the interval of the data
-
-   @return     a list of windows
-   """
-   slice = mat [interval [0]: interval [1]]
-   step = int (len (slice)/n)
-   windows = []
-   for i in np.arange (0, len (slice), step):
-       windows.append (slice [i:i+step-1])
-   return windows
-
 def annotations_to_signal(labels):
-    categories = ['N', 'L', 'R', 'A', 'a', 'J', 'S', 'V', 'F', '[', '!', ']', 'e', 'j', 'E', '/', 'f', 'x', 'Q', '|']
+    categories = ['N', 'L', 'R', 'A', 'a',
+                  'J', 'S', 'V', 'F', '[',
+                  '!', ']', 'e', 'j', 'E',
+                  '/', 'f', 'x', 'Q', '|']
     tsignals = []
     for l in labels:
         s = [0] * (len(categories) + 1)
@@ -48,9 +38,23 @@ def annotations_to_signal(labels):
         tsignals.append(s)
     return tsignals
 
+def match_beat_type(sig: list[int], symbol: str) -> bool:
+    categories = ['N', 'L', 'R', 'A', 'a',
+                  'J', 'S', 'V', 'F', '[',
+                  '!', ']', 'e', 'j', 'E',
+                  '/', 'f', 'x', 'Q', '|']
+    return (sig.index(1) == categories.index(symbol))
+
+## ?? DONT REMEMBER
+# def assign_annotations(windows, anns):
+#     for sample, btype in anns:
+#         for i in range(len(windows)):
+#             if sample in windows[i, 0]:
+#                 windows[i] = np.append(windows[i], btype)
+#                 break
+#     return windows
+
+
 def extract_annotations (pnumber: int, data_path="./mitbih_database/"):
     mat = np.loadtxt (data_path + str(pnumber) + "annotations.txt", dtype=str, skiprows=1, usecols = (1,2))
-    ts = [int (nstr) for nstr in mat[:,0]]
-    sigs = annotations_to_signal(mat[:,1])
-    ret = np.asarray([np.asarray([ts[i], sigs[i]]) for i in range(len(ts))])
-    return ret
+    return np.asarray ([[int (nstr), a] for nstr, a in mat], dtype = object)

@@ -3,6 +3,7 @@ import numpy as np
 import math
 from utils import readcsv, extract_annotations
 from ecgdetectors import Detectors
+from sigs import Window
 
 def prep_data (func) :
     """
@@ -33,7 +34,7 @@ def bwfilter (sig) :
     return signal.sosfilt (sos, sig )
 
 
-def preprocess(pnumber: int, data_path="./mitbih_database/", **kwargs):
+def window_factory(pnumber: int, data_path="./mitbih_database/", **kwargs):
     """
     @brief      extraction and filtering of data from csv file, and segmentation by r-peak algorithm
 
@@ -42,20 +43,33 @@ def preprocess(pnumber: int, data_path="./mitbih_database/", **kwargs):
                 kwargs {
                 sample_rate : sample rate of data
                 onset : number of samples to take before r peak
-                offset : number of samples to take after r peak
-                }
+                offset : number of samples to take after r peak}
 
     @return     returns a matrix of windowed data
     """
     full = readcsv(data_path + str(pnumber) + ".csv")
-    r_peaks = Detectors(kwargs.get('sample_rate', 360)).engzee_detector(full[:,1])
-    wins = create_windows(r_peaks, bwfilter(full), kwargs.get('onset', 44), kwargs.get('offset', 70))
+    annotations = extract_annotations(pnumber)
+    r_peaks = Detectors(
+        kwargs.get('sample_rate', 360)).engzee_detector(full[:,1])
+    return create_windows(r_peaks, bwfilter(full),
+                          kwargs.get('onset', 44),
+                          kwargs.get('offset', 70),
+                          annotations)
+
+
+def create_windows(rps, data, onset, offset, anns):
+    """
+    @brief      builds Window objects with data and annotations
+    """
+    wins = []
+    tmp = [[data[idx-onset:idx+offset,0],
+            data[idx-onset:idx+offset,1],
+            data[idx-onset:idx+offset,2]] for idx in rps]
+    for ts, a in anns:
+        for win in tmp:
+            if ts in win [0]:
+                wins.append (Window (win, a))
+                break
     return wins
 
-
-def create_windows(rps: list[int], data: list, onset: int, offset: int):
-    ret = []
-    for idx in rps:
-        entry = [data[idx-onset:idx+offset,0], data[idx-onset:idx+offset,1]]
-        ret.append(entry)
-    return np.asarray(ret)
+ ## np.asarray([[data[idx-onset:idx+offset,0], data[idx-onset:idx+offset,1]] for idx in rps])
