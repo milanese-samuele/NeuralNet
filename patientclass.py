@@ -4,10 +4,10 @@ from preprocessing import window_factory
 
 class Patient:
     def __init__ (self, pnr):
+        self.number = pnr
         try:
             with open ("./preprocessed_patients/" + str (pnr), 'rb') as infile:
-                self = pickle.load (infile)
-                print ("Loading Succesful")
+                self.wins = pickle.load (infile).wins
         except:
             print ("Patient not preprocessed yet")
             with open ("./preprocessed_patients/" + str (pnr), 'wb') as outfile:

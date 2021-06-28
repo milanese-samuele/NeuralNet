@@ -47,13 +47,14 @@ def window_factory(pnumber: int, data_path="./mitbih_database/", **kwargs):
 
     @return     returns a matrix of windowed data
     """
+
     full = readcsv(data_path + str(pnumber) + ".csv")
     annotations = extract_annotations(pnumber)
     r_peaks = Detectors(
         kwargs.get('sample_rate', 360)).engzee_detector(full[:,1])
     return create_windows(r_peaks, bwfilter(full),
-                          kwargs.get('onset', 44),
-                          kwargs.get('offset', 70),
+                          kwargs.get('onset', 44), #44
+                          kwargs.get('offset', 70), #70
                           annotations)
 
 

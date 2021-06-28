@@ -4,6 +4,14 @@ from rnn import RNN
 from utils import *
 from preprocessing import *
 from sigs import Window
+from patientclass import Patient
+
+
+pns = [100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
+       111, 112, 113, 114, 115, 116, 117, 118, 119, 121,
+       122, 123, 124, 200, 201, 202, 203, 205, 207, 208,
+       209, 210, 212, 213, 214, 215, 217, 219, 220, 221,
+       222, 223, 228, 230, 231, 232, 233, 234]
 
 FS = 360 # sample frequency per second
 
@@ -38,12 +46,53 @@ def test_filter () :
 def test_pam () :
     tmp = window_factory(201)
     anormal = [win for win in tmp if win.btype != 'N']
-    print (len (anormal))
-    # for win in anormal:
-    #     plt.plot (win.signal [0], win.signal [1])
-    #     plt.plot (win.signal [0], win.signal [2])
-    #     plt.title (win.btype)
-    #     plt.show ()
+    for win in anormal:
+        plt.plot (range (len (win.signal)), win.signal)
+        plt.title (win.btype)
+        plt.show ()
+
+def find_table():
+    for p in pns:
+        tmp = window_factory (p)
+        labs = [w.btype for w in tmp]
+        print ("patient: {}\t{}".format (p, set (labs)))
+
+def create_artifacts ():
+    for i in pns:
+        Patient (i)
+
+def occurrence_table ():
+    # c = 0
+    # for p in pns:
+    #     c += list (extract_annotations (p) [:,1]).count ('L')
+    # print (c)
+    ul = []
+    for p in [Patient (i) for i in pns]:
+        l = set ([w.btype for w in p.wins])
+        b = ('A' in l) + ('N' in l) + ('R' in l) + ('L' in l) + ('V' in l)
+        ul.append (np.asarray ([p, l,  b]))
+    acc=[]
+    ul = np.asarray ([x for x in ul if x [2]>=3])
+    for p in ul[:,0]:
+        l = [w.btype for w in p.wins]
+        for x in l:
+            acc.append (x)
+    print (len (ul))
+    print (Sort_Tuple ([[x, acc.count (x)] for x in set (acc)],1 ))
+
+# borrowed by geeksforgeeks
+def Sort_Tuple(tup, pos):
+
+    # getting length of list of tuples
+    lst = len(tup)
+    for i in range(0, lst):
+
+        for j in range(0, lst-i-1):
+            if (tup[j][pos] > tup[j + 1][pos]):
+                temp = tup[j]
+                tup[j]= tup[j + 1]
+                tup[j + 1]= temp
+    return tup
 
 
 def test_arch () :
