@@ -43,10 +43,10 @@ def balance_patient (pn: int, ds: float, n):
     cnt = Counter ([w.btype for w in p.wins]).most_common (n)
     new_batch = []
     # for each most common class
-    for l, o in cnt:
+    for lab, occ in cnt:
         # get new length
-        new_length = int (o - (o - cnt [n-1] [1]) * ds)
-        eqfilt = lambda x : l == x.btype
+        new_length = int (occ - (occ - cnt [n-1] [1]) * ds)
+        eqfilt = lambda x : lab == x.btype
         # downsample
         for _ in random.sample(list (filter (eqfilt, p.wins)),new_length):
             new_batch.append (_)
