@@ -38,12 +38,12 @@ def annotations_to_signal(labels):
         tsignals.append(s)
     return tsignals
 
-def match_beat_type(sig: list[int], symbol: str) -> bool:
+def match_beat_type(sig, symbol: str) -> bool:
     categories = ['N', 'L', 'R', 'A', 'a',
                   'J', 'S', 'V', 'F', '[',
                   '!', ']', 'e', 'j', 'E',
                   '/', 'f', 'x', 'Q', '|']
-    return (sig.index(1) == categories.index(symbol))
+    return (sig.index(1) == categories.index(symbol)) 
 
 ## ?? DONT REMEMBER
 # def assign_annotations(windows, anns):

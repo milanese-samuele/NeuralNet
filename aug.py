@@ -4,7 +4,7 @@ from collections import Counter
 import random
 
 
-def make_batch(pns: list[int], classes: list[int]) :
+def make_batch(pns: list, classes: list) :
     """
     @brief      this function creates of batch of windows belonging to certain
                 classes from a list of patients
@@ -21,7 +21,7 @@ def make_batch(pns: list[int], classes: list[int]) :
     return [win for sub in batch for win in sub]  # Return the flat batch
 
 
-def filter_btype (pns: list [int], bt: str):
+def filter_btype (pns: list, bt: str):
     """
     @brief      returns a list of beats matching the given type
 
@@ -43,10 +43,10 @@ def balance_patient (pn: int, ds: float, n):
     cnt = Counter ([w.btype for w in p.wins]).most_common (n)
     new_batch = []
     # for each most common class
-    for l, o in cnt:
+    for lab, occ in cnt:
         # get new length
-        new_length = int (o - (o - cnt [n-1] [1]) * ds)
-        eqfilt = lambda x : l == x.btype
+        new_length = int (occ - (occ - cnt [n-1] [1]) * ds)
+        eqfilt = lambda x : lab == x.btype
         # downsample
         for _ in random.sample(list (filter (eqfilt, p.wins)),new_length):
             new_batch.append (_)
