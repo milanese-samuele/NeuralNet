@@ -73,7 +73,8 @@ def main():
     # K-fold Cross Validation model evaluation
     fold_no = 1
     for train, test in kfold.split(inputs, labels):
-        
+        print(train)
+        '''
         
         model = model_builder(input_shape, 3)
         # Generate a print
@@ -97,7 +98,7 @@ def main():
     print('Average scores for all folds:')
     print(f'> Accuracy: {np.mean(acc_per_fold)} (+- {np.std(acc_per_fold)})')
     print(f'> Loss: {np.mean(loss_per_fold)}')
-    print('------------------------------------------------------------------------')
+    print('------------------------------------------------------------------------')'''
 
 
 
