@@ -51,14 +51,17 @@ def main():
     #one hot encoding
     labels = utils.annotations_to_signal(labels, ["F", "V", "N"])
     inputs = np.asarray([np.asarray(w.signal) for w in patient_data])
-    
-    
+
+
     '''
     print(inputs[0])
     print(type(inputs))'''
 
     # Size of a single heartbeat
     input_shape = (len(inputs[0]), 1)
+
+    # Make sure all inputs have same shape
+    inputs = [i for i in inputs if len (i) == input_shape [0]]
 
     # Define per-fold score lists
     acc_per_fold = []
@@ -73,17 +76,19 @@ def main():
     # K-fold Cross Validation model evaluation
     fold_no = 1
     for train, test in kfold.split(inputs, labels):
-        print(train)
-        '''
-        
         model = model_builder(input_shape, 3)
         # Generate a print
         print('------------------------------------------------------------------------')
         print(f'Training for fold {fold_no} ...')
 
-        history = model.fit(inputs[train], labels[train], epochs=3, batch_size=32) #tune batch size
+        history = model.fit([inputs [i] for i in train],
+                            [labels [i] for i in train],
+                            epochs=3,
+                            batch_size=32) #tune batch size
 
-        scores = model.evaluate(inputs[test], labels[test], verbose=0)
+        scores = model.evaluate([inputs [i] for i in test],
+                                [labels [i] for i in test],
+                                verbose=0)
         print(f'Score for fold {fold_no}: {model.metrics_names[0]} of {scores[0]}; {model.metrics_names[1]} of {scores[1]*100}%')
         acc_per_fold.append(scores[1] * 100)
         loss_per_fold.append(scores[0])
@@ -98,7 +103,7 @@ def main():
     print('Average scores for all folds:')
     print(f'> Accuracy: {np.mean(acc_per_fold)} (+- {np.std(acc_per_fold)})')
     print(f'> Loss: {np.mean(loss_per_fold)}')
-    print('------------------------------------------------------------------------')'''
+    print('------------------------------------------------------------------------')
 
 
 
