@@ -48,7 +48,7 @@ def main():
     # Inputs and labels from a preprocessed patient
     patient_data = balance_patient(208, 0.1, 3)
     labels = [w.btype for w in patient_data]
-    #one hot encoding
+    # one hot encoding
     labels = utils.annotations_to_signal(labels, ["F", "V", "N"])
     inputs = np.asarray([np.asarray(w.signal) for w in patient_data])
 
@@ -76,6 +76,7 @@ def main():
     # K-fold Cross Validation model evaluation
     fold_no = 1
     for train, test in kfold.split(inputs, labels):
+        '''
         model = model_builder(input_shape, 3)
         # Generate a print
         print('------------------------------------------------------------------------')
@@ -103,7 +104,7 @@ def main():
     print('Average scores for all folds:')
     print(f'> Accuracy: {np.mean(acc_per_fold)} (+- {np.std(acc_per_fold)})')
     print(f'> Loss: {np.mean(loss_per_fold)}')
-    print('------------------------------------------------------------------------')
+    print('------------------------------------------------------------------------') '''
 
 
 
