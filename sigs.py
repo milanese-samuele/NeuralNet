@@ -12,3 +12,6 @@ class Window:
         print("signal: ", self.signal)
         print("beat type:", self.btype)
         return ""
+
+    def __eq__ (self, other):
+        return self.btype == other.btype

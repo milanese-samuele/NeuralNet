@@ -5,6 +5,8 @@ from utils import *
 from preprocessing import *
 from sigs import Window
 from patientclass import Patient
+from aug import *
+from collections import Counter
 
 
 pns = [100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
@@ -60,6 +62,14 @@ def find_table():
 def create_artifacts ():
     for i in pns:
         Patient (i)
+
+def test_balance():
+    print (len (balance_patient (208, 1.0, 3)))
+    # for p in [Patient (i) for i in pns]:
+    #     labs = [w.btype for w in p.wins]
+    #     if len (set (labs)) >= 2:
+    #         print (p.number)
+    #         print (Counter (p.wins))
 
 def occurrence_table ():
     # c = 0
