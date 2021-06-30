@@ -69,7 +69,7 @@ def create_windows(rps, data, onset, offset, anns):
             data[idx-onset:idx+offset,2]] for idx in rps]
     for ts, a in anns:
         for win in tmp:
-            if ts in win [0]:
+            if ts in win [0] and len (win [1]) == onset+offset:
                 wins.append (Window (win, a))
                 break
     return wins
