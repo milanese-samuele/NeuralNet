@@ -55,7 +55,7 @@ def main():
     # K-fold Cross Validation model evaluation
     fold_no = 1
     for train, test in kfold.split(inputs, labels):
-        model = build_model(input_shape)
+        model = build_model(input_shape, num_outpus)
         # Generate a print
         print('------------------------------------------------------------------------')
         print(f'Training for fold {fold_no} ...')
