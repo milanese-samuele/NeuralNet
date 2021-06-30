@@ -1,21 +1,24 @@
-
-import utils
 import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Conv1D, Flatten, AveragePooling1D, Dropout
 from tensorflow.python.keras import backend as K
 config = tf.compat.v1.ConfigProto()
 config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
 sess = tf.compat.v1.Session(config=config)
-K.set_session(sess)
+K.set_session(sess) 
 
 from sklearn.model_selection import KFold
 import numpy as np
 
+from tensorflow.keras.datasets import mnist
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Conv1D, Flatten, AveragePooling1D, Dropout
+import matplotlib.pyplot as plt
+
 from aug import *
+import utils
 
 
-def model_builder(input_shape, num_output):
+def model_builder():
     model = Sequential()
     model.add(Conv1D(filters=16, kernel_size=13, activation="relu", input_shape=(114, 1))) #tune filter and kernal size
     model.add(AveragePooling1D(pool_size=3)) #tune pool size
@@ -37,21 +40,12 @@ def model_builder(input_shape, num_output):
 
     model.compile(loss='categorical_crossentropy', optimizer='SGD', metrics=['accuracy'])
 
-    '''
-
-    model.compile(
-                    optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),# tune learning rate and optimizer type
-                    loss=tf.keras.losses.SparseCategoricalCrossentropy(), # tune loss function type
-                    metrics=metrics
-                    ) '''
-
     model.summary()
 
     return model
 
 
 def main():
-
     # Inputs and labels from a preprocessed patient
     patient_data = balance_patient(208, 0.1, 3)
     labels = [w.btype for w in patient_data]
@@ -59,55 +53,28 @@ def main():
     labels = np.asarray(utils.annotations_to_signal(labels, ["F", "V", "N"]))
     inputs = np.asarray([np.asarray(w.signal) for w in patient_data])
 
-    '''
-    print(inputs[0])
-    print(type(inputs))'''
-
-    # Size of a single heartbeat
-    #input_shape = inputs.reshape(len(inputs), 114, 1)
-    inputs = inputs.reshape(len(inputs), 114, 1)
-    labels = labels.reshape(len(labels), 3, 1)
- 
-
     # Define per-fold score lists
     acc_per_fold = []
     loss_per_fold = []
 
+
+    # reshape to fit model (1 for grayscale)
+    inputs = inputs.reshape(len(inputs), 114, 1)
+
     # Define the K-fold Cross Validator
-    kfold = KFold(n_splits=3, shuffle=True)
+    kfold = KFold(n_splits=2, shuffle=True)
 
     # K-fold Cross Validation model evaluation
     fold_no = 1
     for train, test in kfold.split(inputs, labels):
+        #build model
+        model = model_builder()
 
-        #print(train)
+        model.fit(inputs[train], labels[train], epochs=3) 
+    
 
-        fold_inputs = np.asarray([inputs [i] for i in train])
-        fold_labels = np.asarray([labels [i] for i in train])
-
-        #print(fold_inputs.shape)
-        #print(fold_labels.shape)
-
-        model = model_builder(fold_inputs[0].shape, len(fold_labels[0][0]))
-
-
-
-
-        # Generate a print
-        print('------------------------------------------------------------------------')
-        print(f'Training for fold {fold_no} ...')
-
-
-        history = model.fit(fold_inputs,
-                            fold_labels,
-                            epochs=3,
-                            batch_size=32) #tune batch size 
-        '''
-
-
-        scores = model.evaluate([inputs [i] for i in test],
-                                [labels [i] for i in test],
-                                verbose=0)
+        scores = model.evaluate(inputs[test],
+                                labels[test])
         print(f'Score for fold {fold_no}: {model.metrics_names[0]} of {scores[0]}; {model.metrics_names[1]} of {scores[1]*100}%')
         acc_per_fold.append(scores[1] * 100)
         loss_per_fold.append(scores[0])
@@ -122,7 +89,7 @@ def main():
     print('Average scores for all folds:')
     print(f'> Accuracy: {np.mean(acc_per_fold)} (+- {np.std(acc_per_fold)})')
     print(f'> Loss: {np.mean(loss_per_fold)}')
-    print('------------------------------------------------------------------------') '''
+    print('------------------------------------------------------------------------') 
 
 
 

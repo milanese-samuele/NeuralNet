@@ -22,7 +22,7 @@ def build_model(input_shape, hp):
     x = layers.Conv1D(filters=19, kernel_size=128, activation="relu")(x)
     x = layers.AveragePooling1D(pool_size=3)(x)
     # tries [0.3, 0.5, 0.7] as dropout-rates
-    x = layers.Dropout(hp.Choice("dropout-rate", values = [0.3, 0.5, 0.7]))(x)
+    x = layers.Dropout(0.5]))(x)
     x = layers.Dense(units=35, kernel_regularizer=regularizers.l2(5))(x)
     #l2 reg twice??
     x = layers.Dense(units=5, kernel_regularizer=regularizers.l2(5))(x)
