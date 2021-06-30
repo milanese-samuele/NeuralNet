@@ -26,17 +26,13 @@ def windowplots (windows : list) :
     plt.legend ()
     plt.show ()
 
-def annotations_to_signal(labels):
-    categories = ['N', 'L', 'R', 'A', 'a',
-                  'J', 'S', 'V', 'F', '[',
-                  '!', ']', 'e', 'j', 'E',
-                  '/', 'f', 'x', 'Q', '|']
+def annotations_to_signal(labels, categories):
     tsignals = []
     for l in labels:
         s = [0] * (len(categories) + 1)
         s[categories.index(l) if l in categories else len(categories)] = 1
-        tsignals.append(s)
-    return tsignals
+        tsignals.append(np.asarray (s))
+    return np.asarray (tsignals)
 
 def match_beat_type(sig, symbol: str) -> bool:
     categories = ['N', 'L', 'R', 'A', 'a',
