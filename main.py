@@ -4,7 +4,8 @@ def main():
     # test_filter ()
     # find_table ()
     # create_artifacts ()
-    occurrence_table ()
+    # occurrence_table ()
+    test_balance()
     # test_arch ()
     # ts = extractAnnotations ("./mitbih_database/201annotations.txt")
 

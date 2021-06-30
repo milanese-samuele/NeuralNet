@@ -61,6 +61,7 @@ def window_factory(pnumber: int, data_path="./mitbih_database/", **kwargs):
 def create_windows(rps, data, onset, offset, anns):
     """
     @brief      builds Window objects with data and annotations
+                to be used only by Window object creation
     """
     wins = []
     tmp = [[data[idx-onset:idx+offset,0],
@@ -72,5 +73,3 @@ def create_windows(rps, data, onset, offset, anns):
                 wins.append (Window (win, a))
                 break
     return wins
-
- ## np.asarray([[data[idx-onset:idx+offset,0], data[idx-onset:idx+offset,1]] for idx in rps])
