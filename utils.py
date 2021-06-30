@@ -39,7 +39,7 @@ def match_beat_type(sig, symbol: str) -> bool:
                   'J', 'S', 'V', 'F', '[',
                   '!', ']', 'e', 'j', 'E',
                   '/', 'f', 'x', 'Q', '|']
-    return (sig.index(1) == categories.index(symbol)) 
+    return (sig.index(1) == categories.index(symbol))
 
 ## ?? DONT REMEMBER
 # def assign_annotations(windows, anns):
