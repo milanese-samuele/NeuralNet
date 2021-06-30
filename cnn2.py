@@ -1,4 +1,5 @@
 from cnn import build_model
+import utils
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Conv1D, Flatten, AveragePooling1D, Dropout
@@ -46,18 +47,18 @@ def main():
 
     # Inputs and labels from a preprocessed patient
     patient_data = balance_patient(208, 0.1, 3)
-    labels = np.asarray([np.asarray(w.btype for w in patient_data)])
-    print(labels[0])
-    inputs = np.asarray([np.asarray(w.signal for w in patient_data)])
+    labels = [w.btype for w in patient_data]
+    #one hot encoding
+    labels = utils.annotations_to_signal(labels, ["F", "V", "N"])
+    inputs = np.asarray([np.asarray(w.signal) for w in patient_data])
     
     
     '''
-    print(labels[0])
     print(inputs[0])
     print(type(inputs))'''
 
     # Size of a single heartbeat
-    input_shape = (len (inputs[0]), 1)
+    input_shape = (len(inputs[0]), 1)
 
     # Define per-fold score lists
     acc_per_fold = []
@@ -72,7 +73,7 @@ def main():
     # K-fold Cross Validation model evaluation
     fold_no = 1
     for train, test in kfold.split(inputs, labels):
-        '''
+        
         
         model = model_builder(input_shape, 3)
         # Generate a print
@@ -96,7 +97,7 @@ def main():
     print('Average scores for all folds:')
     print(f'> Accuracy: {np.mean(acc_per_fold)} (+- {np.std(acc_per_fold)})')
     print(f'> Loss: {np.mean(loss_per_fold)}')
-    print('------------------------------------------------------------------------')'''
+    print('------------------------------------------------------------------------')
 
 
 

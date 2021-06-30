@@ -29,10 +29,10 @@ def windowplots (windows : list) :
 def annotations_to_signal(labels, categories):
     tsignals = []
     for l in labels:
-        s = [0] * (len(categories) + 1)
+        s = [0] * (len(categories))
         s[categories.index(l) if l in categories else len(categories)] = 1
         tsignals.append(np.asarray (s))
-    return np.asarray (tsignals)
+    return tsignals
 
 def match_beat_type(sig, symbol: str) -> bool:
     categories = ['N', 'L', 'R', 'A', 'a',
