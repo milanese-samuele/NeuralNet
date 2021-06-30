@@ -52,16 +52,12 @@ def main():
     labels = utils.annotations_to_signal(labels, ["F", "V", "N"])
     inputs = np.asarray([np.asarray(w.signal) for w in patient_data])
 
-
     '''
     print(inputs[0])
     print(type(inputs))'''
 
     # Size of a single heartbeat
     input_shape = (len(inputs[0]), 1)
-
-    # Make sure all inputs have same shape
-    inputs = [i for i in inputs if len (i) == input_shape [0]]
 
     # Define per-fold score lists
     acc_per_fold = []
