@@ -38,16 +38,10 @@ def model_builder(hp):
     #Layer 6
     model.add(Dense(3, activation='softmax'))
 
-    metrics = [
-                tf.keras.metrics.Accuracy(name='accuracy'),
-                tf.keras.metrics.TruePositives(name='tp'),
-                tf.keras.metrics.FalsePositives(name='fp'),
-                tf.keras.metrics.TrueNegatives(name='tn'),
-                tf.keras.metrics.FalseNegatives(name='fn'),
-                tf.keras.metrics.Precision(name='precision'),
-             ]
+    # Set evaluation metrics
+    metrics = set_metrics()
 
-    model.compile(loss='categorical_crossentropy', optimizer=tf.keras.optimizers.SGD(lr=learning_rate), metrics=['accuracy'])
+    model.compile(loss='categorical_crossentropy', optimizer=tf.keras.optimizers.SGD(lr=learning_rate), metrics=metrics)
 
     #model.summary()
 
@@ -76,26 +70,46 @@ def hyperparameter_grid_builder():
 
     return hp
 
+def set_metrics():
+    return [
+                tf.keras.metrics.CategoricalAccuracy(name='accuracy'),
+                tf.keras.metrics.TruePositives(name='tp'),
+                tf.keras.metrics.FalsePositives(name='fp'),
+                tf.keras.metrics.TrueNegatives(name='tn'),
+                tf.keras.metrics.FalseNegatives(name='fn')]
+
 def main():
+    # Set to true if you wish to tune hyperparameter using exhaustive grid search
+    hyperparameter_tuning= True
+
     # Inputs and labels from a preprocessed patient
     patient_data = balance_patient(208, 0.1, 3)
     labels = [w.btype for w in patient_data]
     # one hot encoding
     labels = np.asarray(utils.annotations_to_signal(labels, ["F", "V", "N"]))
     inputs = np.asarray([np.asarray(w.signal) for w in patient_data])
-    
 
     # Reshape to fit model 
     inputs = inputs.reshape(len(inputs), 114, 1)
 
-    # hyperparameter gridsearch set-up
-    hp_grid = hyperparameter_grid_builder()
+    if (hyperparameter_tuning):
+        # hyperparameter gridsearch set-up
+        hp_grid = hyperparameter_grid_builder()
 
-    # Define model (average) accuracy, loss, and hp containers
+    else:
+        # Set desired architecture
+        hp_grid = [[32, 5, 3, 0.3, 50, 0.1]]
+
+
+    # Initialize model (average) accuracy, loss, and hp containers
     models = []
     models_average_accuracy = []
     models_average_accuracy_std = []
     models_average_loss = []
+    models_average_tp = []
+    models_average_fp = []
+    models_average_tn = []
+    models_average_fn = []
 
     # Hyperparameter gridsearch loop
     for itr, hp in enumerate(hp_grid):
@@ -103,12 +117,16 @@ def main():
         print(f'Model {itr + 1}/{len(hp_grid)}')
 
 
-        # Define per-fold score lists
+        # Initizalize per-fold score lists
         acc_per_fold = []
         loss_per_fold = []
+        tp_per_fold = []
+        fp_per_fold = []
+        tn_per_fold = []
+        fn_per_fold = []
 
         # Define the K-fold Cross Validator
-        kfold = KFold(n_splits=2, shuffle=True)
+        kfold = KFold(n_splits=10, shuffle=True)
 
         # K-fold Cross Validation model evaluation
         fold_no = 1
@@ -116,35 +134,30 @@ def main():
             #build model
             model = model_builder(hp)
 
-            model.fit(inputs[train], labels[train], epochs=3, verbose=0) #tune batch size and epochs
+            model.fit(inputs[train], labels[train], epochs=3, batch_size=32, verbose=0) #tune batch size and epochs
         
 
             scores = model.evaluate(inputs[test],
                                     labels[test],
+                                    batch_size=32,
                                     verbose=0)
-            # print(f'Score for fold {fold_no}: {model.metrics_names[0]} of {scores[0]}; {model.metrics_names[1]} of {scores[1]*100}%')
-            acc_per_fold.append(scores[1] * 100)
+            #print(model.metrics_names)
+            #print(scores)
             loss_per_fold.append(scores[0])
-
-        '''
-
-        # == Provide average scores ==
-        print('------------------------------------------------------------------------')
-        print('Score per fold')
-        for i in range(0, len(acc_per_fold)):
-            print('------------------------------------------------------------------------')
-            print(f'> Fold {i+1} - Loss: {loss_per_fold[i]} - Accuracy: {acc_per_fold[i]}%')
-        print('------------------------------------------------------------------------')
-        print('Average scores for all folds:')
-        print(f'> Accuracy: {np.mean(acc_per_fold)} (+- {np.std(acc_per_fold)})')
-        print(f'> Loss: {np.mean(loss_per_fold)}')
-        print('------------------------------------------------------------------------') 
-        '''
+            acc_per_fold.append(scores[1] * 100)
+            tp_per_fold.append(scores[2])
+            fp_per_fold.append(scores[3])
+            tn_per_fold.append(scores[4])
+            fn_per_fold.append(scores[5])
     
 
         models_average_accuracy.append(np.mean(acc_per_fold))
         models_average_accuracy_std.append(np.std(acc_per_fold))
         models_average_loss.append(np.mean(loss_per_fold))
+        models_average_tp.append(np.mean(tp_per_fold))
+        models_average_fp.append(np.mean(fp_per_fold))
+        models_average_tn.append(np.mean(tn_per_fold))
+        models_average_fn.append(np.mean(fn_per_fold))
         models.append(model)
 
     
@@ -153,6 +166,10 @@ def main():
     index_best_model = models_average_accuracy.index(max(models_average_accuracy))
     print(f'> Average accuracy: {models_average_accuracy[index_best_model]} (+- {models_average_accuracy_std[index_best_model]})')
     print(f'> Average loss: {models_average_loss[index_best_model]}')
+    print(f'> Average tp rate: {models_average_tp[index_best_model]}')
+    print(f'> Average fp rate: {models_average_fp[index_best_model]}')
+    print(f'> Average tn rate: {models_average_tn[index_best_model]}')
+    print(f'> Average fn rate: {models_average_fn[index_best_model]}')
     print(models[index_best_model].summary())
     print(f'> Hyperparamers: {hp_grid[index_best_model]}')
     print('------------------------------------------------------------------------') 
