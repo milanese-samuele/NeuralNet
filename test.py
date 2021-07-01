@@ -64,12 +64,7 @@ def create_artifacts ():
         Patient (i)
 
 def test_balance():
-    print (len (balance_patient (208, 1.0, 3)))
-    # for p in [Patient (i) for i in pns]:
-    #     labs = [w.btype for w in p.wins]
-    #     if len (set (labs)) >= 2:
-    #         print (p.number)
-    #         print (Counter (p.wins))
+    gen_tuning_batch (pns, 5, 100, 0.0)
 
 def occurrence_table ():
     # c = 0
