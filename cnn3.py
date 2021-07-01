@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 from aug import *
 import utils
 
-import itertools
+import random
 
 
 def model_builder(hp, out_channels):
@@ -86,9 +86,11 @@ def main():
     # Set to true if you wish to tune hyperparameter using exhaustive grid search
     hyperparameter_tuning= True
     use_general_dataset=True
+    random_search = True
+    random_search_trials = 2
 
     if use_general_dataset:
-        patient_data, _ = gen_tuning_batch(utils.pns, 5, 100, 0.5)
+        patient_data, _ = gen_tuning_batch(utils.pns, 5, 500, 0.8)
         labels = [w.btype for w in patient_data]
         labelset = list(set(labels))
         labels = np.asarray(utils.annotations_to_signal(labels, labelset))
@@ -117,6 +119,9 @@ def main():
         hp_grid = [[32, 5, 3, 0.3, 50, 0.1]]
         # best of ten fold with catcross, sgd, 3 epoch, batch 32 -> [8, 5, 3, 0.3, 25, 0.1]
 
+    if random_search:
+        random.shuffle(hp_grid)
+        hp_grid = hp_grid[:random_search_trials]
 
     # Initialize model (average) accuracy, loss, and hp containers
     models = []
@@ -130,7 +135,7 @@ def main():
 
     # Hyperparameter gridsearch loop
     for itr, hp in enumerate(hp_grid):
-
+        # Print progress
         print(f'Model {itr + 1}/{len(hp_grid)}')
 
         # Initizalize per-fold score lists
@@ -187,7 +192,6 @@ def main():
     print(f'> Average fn rate: {models_average_fn[index_best_model]}')
     print(f'> Hyperparamers: {hp_grid[index_best_model]}')
     print('------------------------------------------------------------------------')
-
 
 if __name__ == "__main__":
     main()
