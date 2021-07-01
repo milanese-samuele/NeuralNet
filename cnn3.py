@@ -22,7 +22,7 @@ import itertools
 
 def model_builder(hp):
     #cfn1, cks1, ps1, cfn2, cks2, ps2, dls, dr = hp
-    num_filters, kernel_size, pool_size, dropout_rates, dense_layer_size, learning_rate = hp
+    num_filters, kernel_size, pool_size, dropout_rates, dense_layer_size, learning_rate, loss_function, _ = hp
 
     model = Sequential()
     #Layer 1
@@ -41,7 +41,7 @@ def model_builder(hp):
     # Set evaluation metrics
     metrics = set_metrics()
 
-    model.compile(loss='categorical_crossentropy', optimizer=tf.keras.optimizers.SGD(lr=learning_rate), metrics=metrics)
+    model.compile(loss=loss_function, optimizer=tf.keras.optimizers.SGD(lr=learning_rate), metrics=metrics)
 
     #model.summary()
 
@@ -55,6 +55,7 @@ def hyperparameter_grid_builder():
     dropout_rates = [0.3, 0.5, 0.7]
     learning_rates = [0.0001, 0.001, 0.01, 0.1]
     loss_functions = ['categorical_crossentropy', 'mean_squared_error']
+    downsampling_rates = [0.0, 0.25, 0.5, 0.75, 1.0]
 
     # hyperparameter combinations
     hp = []
@@ -66,7 +67,8 @@ def hyperparameter_grid_builder():
                     for dls in dense_layer_sizes:
                         for lr in learning_rates:
                             for lf in loss_functions:
-                                hp.append([cfn, cks, ps, dr, dls, lr, lf])
+                                for ds in downsampling_rates:
+                                    hp.append([cfn, cks, ps, dr, dls, lr, lf, ds])
 
     print(f'Number of hyperparameter combinations: {len(hp)}')
 
@@ -92,7 +94,7 @@ def main():
     inputs = np.asarray([np.asarray(w.signal) for w in patient_data])
 
     # Reshape to fit model
-    inputs = inputs.reshape(len(inputs), 114, 1)
+    # inputs = inputs.reshape(len(inputs), 114, 1)
 
     if (hyperparameter_tuning):
         # hyperparameter gridsearch set-up
@@ -117,6 +119,13 @@ def main():
     for itr, hp in enumerate(hp_grid):
 
         print(f'Model {itr + 1}/{len(hp_grid)}')
+
+        ds = hp [-1]
+        hp_batch, _ = gen_tuning_batch (utils.pns, 5, 100, ds)
+        labels = [w.btype for w in hp_batch]
+        f = hp_batch [0].signal
+        print (len (f))
+
 
 
         # Initizalize per-fold score lists

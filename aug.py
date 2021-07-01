@@ -105,4 +105,4 @@ def gen_tuning_batch (pns, n_outs, min_samples, ds):
             for _ in random.sample(list (filter (eqfilt, batch)),new_length):
                 balanced_batch.append (_)
 
-    return balanced_batch, selected_p
+    return random.sample (balanced_batch, len (balanced_batch)), selected_p
