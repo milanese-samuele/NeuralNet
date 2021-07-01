@@ -20,7 +20,7 @@ import utils
 import itertools
 
 
-def model_builder(hp):
+def model_builder(hp, out_channels):
     #cfn1, cks1, ps1, cfn2, cks2, ps2, dls, dr = hp
     num_filters, kernel_size, pool_size, dropout_rates, dense_layer_size, learning_rate, loss_function = hp
 
@@ -36,7 +36,7 @@ def model_builder(hp):
     #Layer 5
     model.add(Dense(units=dense_layer_size, activation='relu')) #tune number of hidden units
     #Layer 6
-    model.add(Dense(3, activation='softmax'))
+    model.add(Dense(out_channels, activation='softmax'))
 
     # Set evaluation metrics
     metrics = set_metrics()
@@ -88,20 +88,25 @@ def main():
     use_general_dataset=True
 
     if use_general_dataset:
-        patient_data = gen
-        
+        patient_data, _ = gen_tuning_batch(utils.pns, 5, 100, 0.5)
+        labels = [w.btype for w in patient_data]
+        labelset = list(set(labels))
+        labels = np.asarray(utils.annotations_to_signal(labels, labelset))
+        inputs = np.asarray([np.asarray(w.signal) for w in patient_data])
+        # Reshape to fit model
+        inputs = inputs.reshape(len(inputs), 114, 1)
+        out_channels = len(labelset)
 
     else:
         # Inputs and labels from a preprocessed patient
         patient_data = balance_patient(208, 0.1, 3)
         labels = [w.btype for w in patient_data]
-    
-    # one hot encoding
-    labels = np.asarray(utils.annotations_to_signal(labels, ["F", "V", "N"]))
-    inputs = np.asarray([np.asarray(w.signal) for w in patient_data])
-
-    # Reshape to fit model
-    # inputs = inputs.reshape(len(inputs), 114, 1)
+        # one hot encoding
+        labels = np.asarray(utils.annotations_to_signal(labels, ["F", "V", "N"]))
+        inputs = np.asarray([np.asarray(w.signal) for w in patient_data])
+        # Reshape to fit model
+        inputs = inputs.reshape(len(inputs), 114, 1)
+        out_channels = 3
 
     if (hyperparameter_tuning):
         # hyperparameter gridsearch set-up
@@ -143,7 +148,7 @@ def main():
         fold_no = 1
         for train, test in kfold.split(inputs, labels):
             #build model
-            model = model_builder(hp)
+            model = model_builder(hp, out_channels)
 
             model.fit(inputs[train], labels[train], epochs=3, batch_size=32, verbose=0) #tune batch size and epochs
 
