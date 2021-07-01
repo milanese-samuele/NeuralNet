@@ -51,3 +51,58 @@ def balance_patient (pn: int, ds: float, n):
         for _ in random.sample(list (filter (eqfilt, p.wins)),new_length):
             new_batch.append (_)
     return random.sample (new_batch, len (new_batch))
+
+def gen_tuning_batch (pns, n_outs, min_samples, ds):
+    """
+    @brief      Generates a balanced batch of windows from patients selected
+                through some criteria
+
+    @param      pns : list of patient numbers in the dataset
+                n_outs : desired number of output channels
+                min_samples : minimal size of beat type occurrence
+                ds : downsampling factor
+
+    @return     a balanced batch and the selected patients from which it is
+                generated
+    """
+    labs = set ()
+    selected_p = []
+    for p in pns:
+        patient = Patient (p)
+        # Get n most commmon classes
+        cnt = Counter ([w.btype for w in patient.wins]).most_common (n_outs)
+        # Ignore patients with not enough classes
+        if len (cnt) < n_outs:
+            continue
+        # Add patient beat type labels to set
+        selected_p.append (patient)
+        for lab, _ in cnt:
+            labs.add (lab)
+
+    eqfilt = lambda x : lab == x.btype
+    # Build batch
+    batch = []
+    for lab in labs:
+        for p in selected_p:
+            for _ in list (filter (eqfilt, p.wins)):
+                batch.append (_)
+
+    # Balance batch
+    batch_counter = Counter ([w.btype for w in batch]).most_common ()
+
+    # Find reference size for downsampling
+    idx = 0
+    for _ in range (len (batch_counter)):
+        if batch_counter [idx] [1] < min_samples:
+            break
+        idx += 1
+
+    balanced_batch = []
+    for lab, occ in batch_counter:
+        # Downsample and add only beat types that meet requirements
+        if occ >= min_samples:
+            new_length = int (occ - (occ - batch_counter[idx] [1]) * ds)
+            for _ in random.sample(list (filter (eqfilt, batch)),new_length):
+                balanced_batch.append (_)
+
+    return random.sample (balanced_batch, len (balanced_batch)), selected_p

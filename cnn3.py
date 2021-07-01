@@ -3,7 +3,7 @@ from tensorflow.python.keras import backend as K
 config = tf.compat.v1.ConfigProto()
 config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
 sess = tf.compat.v1.Session(config=config)
-K.set_session(sess) 
+K.set_session(sess)
 
 from sklearn.model_selection import KFold
 import numpy as np
@@ -21,7 +21,8 @@ import itertools
 
 
 def model_builder(hp):
-    num_filters, kernel_size, pool_size, dropout_rates, dense_layer_size, learning_rate = hp
+    #cfn1, cks1, ps1, cfn2, cks2, ps2, dls, dr = hp
+    num_filters, kernel_size, pool_size, dropout_rates, dense_layer_size, learning_rate, loss_function, _ = hp
 
     model = Sequential()
     #Layer 1
@@ -40,22 +41,24 @@ def model_builder(hp):
     # Set evaluation metrics
     metrics = set_metrics()
 
-    model.compile(loss='categorical_crossentropy', optimizer=tf.keras.optimizers.SGD(lr=learning_rate), metrics=metrics)
+    model.compile(loss=loss_function, optimizer=tf.keras.optimizers.SGD(lr=learning_rate), metrics=metrics)
 
     #model.summary()
 
     return model
 
 def hyperparameter_grid_builder():
-    conv_filter_number = [8, 16, 32] 
-    conv_kernel_size = [3, 5, 7] 
+    conv_filter_number = [8, 16, 32]
+    conv_kernel_size = [3, 5, 7]
     pool_size = [3, 5]
-    dense_layer_sizes = [25, 50, 75] 
+    dense_layer_sizes = [25, 50, 75]
     dropout_rates = [0.3, 0.5, 0.7]
     learning_rates = [0.001, 0.01, 0.1]
+    loss_functions = ['categorical_crossentropy', 'mean_squared_error']
+    downsampling_rates = [0.0, 0.5, 1.0]
 
     # hyperparameter combinations
-    hp = [] 
+    hp = []
 
     for cfn in conv_filter_number:
         for cks in conv_kernel_size:
@@ -63,8 +66,10 @@ def hyperparameter_grid_builder():
                 for dr in dropout_rates:
                     for dls in dense_layer_sizes:
                         for lr in learning_rates:
-                            hp.append([cfn, cks, ps, dr, dls, lr])
-    
+                            for lf in loss_functions:
+                                for ds in downsampling_rates:
+                                    hp.append([cfn, cks, ps, dr, dls, lr, lf, ds])
+
     print(f'Number of hyperparameter combinations: {len(hp)}')
 
     return hp
@@ -88,8 +93,8 @@ def main():
     labels = np.asarray(utils.annotations_to_signal(labels, ["F", "V", "N"]))
     inputs = np.asarray([np.asarray(w.signal) for w in patient_data])
 
-    # Reshape to fit model 
-    inputs = inputs.reshape(len(inputs), 114, 1)
+    # Reshape to fit model
+    # inputs = inputs.reshape(len(inputs), 114, 1)
 
     if (hyperparameter_tuning):
         # hyperparameter gridsearch set-up
@@ -116,6 +121,13 @@ def main():
 
         print(f'Model {itr + 1}/{len(hp_grid)}')
 
+        ds = hp [-1]
+        hp_batch, _ = gen_tuning_batch (utils.pns, 5, 100, ds)
+        labels = [w.btype for w in hp_batch]
+        f = hp_batch [0].signal
+        print (len (f))
+
+
 
         # Initizalize per-fold score lists
         acc_per_fold = []
@@ -135,7 +147,7 @@ def main():
             model = model_builder(hp)
 
             model.fit(inputs[train], labels[train], epochs=3, batch_size=32, verbose=0) #tune batch size and epochs
-        
+
 
             scores = model.evaluate(inputs[test],
                                     labels[test],
@@ -149,7 +161,7 @@ def main():
             fp_per_fold.append(scores[3])
             tn_per_fold.append(scores[4])
             fn_per_fold.append(scores[5])
-    
+
 
         models_average_accuracy.append(np.mean(acc_per_fold))
         models_average_accuracy_std.append(np.std(acc_per_fold))
@@ -159,7 +171,7 @@ def main():
         models_average_tn.append(np.mean(tn_per_fold))
         models_average_fn.append(np.mean(fn_per_fold))
 
-    
+
     print('------------------------------------------------------------------------')
     print('BEST MODEL:')
     index_best_model = models_average_accuracy.index(max(models_average_accuracy))
@@ -170,7 +182,7 @@ def main():
     print(f'> Average tn rate: {models_average_tn[index_best_model]}')
     print(f'> Average fn rate: {models_average_fn[index_best_model]}')
     print(f'> Hyperparamers: {hp_grid[index_best_model]}')
-    print('------------------------------------------------------------------------') 
+    print('------------------------------------------------------------------------')
 
 
 if __name__ == "__main__":
