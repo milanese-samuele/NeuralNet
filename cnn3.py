@@ -21,7 +21,6 @@ import itertools
 
 
 def model_builder(hp):
-    #cfn1, cks1, ps1, cfn2, cks2, ps2, dls, dr = hp
     num_filters, kernel_size, pool_size, dropout_rates, dense_layer_size, learning_rate = hp
 
     model = Sequential()
@@ -53,7 +52,7 @@ def hyperparameter_grid_builder():
     pool_size = [3, 5]
     dense_layer_sizes = [25, 50, 75] 
     dropout_rates = [0.3, 0.5, 0.7]
-    learning_rates = [0.0001, 0.001, 0.01, 0.1]
+    learning_rates = [0.001, 0.01, 0.1]
 
     # hyperparameter combinations
     hp = [] 
@@ -99,6 +98,7 @@ def main():
     else:
         # Set desired architecture
         hp_grid = [[32, 5, 3, 0.3, 50, 0.1]]
+        # best of ten fold with catcross, sgd, 3 epoch, batch 32 -> [8, 5, 3, 0.3, 25, 0.1]
 
 
     # Initialize model (average) accuracy, loss, and hp containers
@@ -158,7 +158,6 @@ def main():
         models_average_fp.append(np.mean(fp_per_fold))
         models_average_tn.append(np.mean(tn_per_fold))
         models_average_fn.append(np.mean(fn_per_fold))
-        models.append(model)
 
     
     print('------------------------------------------------------------------------')
@@ -170,7 +169,6 @@ def main():
     print(f'> Average fp rate: {models_average_fp[index_best_model]}')
     print(f'> Average tn rate: {models_average_tn[index_best_model]}')
     print(f'> Average fn rate: {models_average_fn[index_best_model]}')
-    print(models[index_best_model].summary())
     print(f'> Hyperparamers: {hp_grid[index_best_model]}')
     print('------------------------------------------------------------------------') 
 
