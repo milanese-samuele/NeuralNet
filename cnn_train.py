@@ -14,9 +14,10 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Conv1D, Flatten, AveragePooling1D, Dropout
 import matplotlib.pyplot as plt
 
+
 from aug import *
 import utils
-
+import random
 
 
 def model_builder(hp, out_channels):
@@ -58,14 +59,20 @@ def main():
     use_general_dataset = True # set to false for single patient dataset
 
     if use_general_dataset:
-        patient_data, _ = gen_tuning_batch(utils.pns, 5, 100, 0.8)
-        labels = [w.btype for w in patient_data]
-        labelset = list(set(labels))
+        patient_names, labelset = select_patients(utils.pns, 5)
+        # select one random patient
+        specific_patient = random.sample(patient_names, 1)
+        # make one patient data
+        patient_data = balance_patient(specific_patient.number)
+        patient_labels = [w.btype for w in patient_data]
         print(f'Number of classes: {len(labelset)}')
-        labels = np.asarray(utils.annotations_to_signal(labels, labelset))
-        inputs = np.asarray([np.asarray(w.signal) for w in patient_data])
+        patient_labels = np.asarray(utils.annotations_to_signal(labels, labelset))
+        patient_inputs = np.asarray([np.asarray(w.signal) for w in patient_data])
         # Reshape to fit model
-        inputs = inputs.reshape(len(inputs), 114, 1)
+        patient_inputs = inputs.reshape(len(inputs), 114, 1)
+
+        general_data = gen_tuning_batch(patient_names, labelset, 500, )
+
         out_channels = len(labelset)
     else:
         # Inputs and labels from a preprocessed patient
@@ -139,7 +146,7 @@ def main():
     print(f'> Average fp rate: {models_metrics[index_best_model][4]}')
     print(f'> Average tn rate: {models_metrics[index_best_model][5]}')
     print(f'> Average fn rate: {models_metrics[index_best_model][6]}')
-    print(f'> Hyperparamers: {hp}') 
+    print(f'> Hyperparamers: {hp}')
     print('------------------------------------------------------------------------')
 
 if __name__ == "__main__":
