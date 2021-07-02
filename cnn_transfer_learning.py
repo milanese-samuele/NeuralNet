@@ -14,7 +14,6 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Conv1D, Flatten, AveragePooling1D, Dropout
 import matplotlib.pyplot as plt
 
-
 from aug import *
 import utils
 
@@ -56,37 +55,10 @@ def set_metrics():
                 tf.keras.metrics.FalseNegatives(name='fn')]
 
 
-    if use_general_dataset:
-        patient_names, labelset = select_patients(utils.pns, 5)
-        general_batch, labelset = gen_tuning_batch(patient_names,
-                                                   labelset, 100, 0.3)
-        print(labelset)
-        print([p.number for p in patient_names])
-        print(len(general_batch))
-        generate_training_batches(patient_names, general_batch, labelset)
-
-        # make one patient data
-        patient_data = balance_patient(specific_patient.number)
-        patient_labels = [w.btype for w in patient_data]
-        print(f'Number of classes: {len(labelset)}')
-        patient_labels = np.asarray(utils.annotations_to_signal(labels, labelset))
-        patient_inputs = np.asarray([np.asarray(w.signal) for w in patient_data])
-        # Reshape to fit model
-        patient_inputs = inputs.reshape(len(inputs), 114, 1)
-
-        general_data = gen_tuning_batch(patient_names, labelset, 500, )
-
-        out_channels = len(labelset)
-    else:
-        # Inputs and labels from a preprocessed patient
-        patient_data = balance_patient(208, 0.1, 3)
-        labels = [w.btype for w in patient_data]
-        # one hot encoding
-        labels = np.asarray(utils.annotations_to_signal(labels, ["F", "V", "N"]))
-        inputs = np.asarray([np.asarray(w.signal) for w in patient_data])
-        # Reshape to fit model
-        inputs = inputs.reshape(len(inputs), 114, 1)
-        out_channels = 3
+def generate_trained_general_model(inputs, labels, hp, output_size):
+    #build model
+    model = model_builder(hp, output_size)
+    model.fit(inputs, labels, epochs=3, batch_size=32, verbose=0) 
 
     print('General Model:')
     model.summary()
@@ -136,16 +108,20 @@ def k_fold_crossvalidation_training(inputs, labels, hp, output_size, model=None)
         fn_per_fold.append(scores[5])
 
     print('------------------------------------------------------------------------')
-    print('BEST MODEL:')
-    models_average_accuracy = np.array(models_metrics)[:,1]
-    index_best_model = np.argmax(models_average_accuracy)
-    print(f'> Average loss: {models_metrics[index_best_model][0]}')
-    print(f'> Average accuracy: {models_metrics[index_best_model][1]} (+- {models_metrics[index_best_model][2]})')
-    print(f'> Average tp rate: {models_metrics[index_best_model][3]}')
-    print(f'> Average fp rate: {models_metrics[index_best_model][4]}')
-    print(f'> Average tn rate: {models_metrics[index_best_model][5]}')
-    print(f'> Average fn rate: {models_metrics[index_best_model][6]}')
-    print(f'> Hyperparamers: {hp}')
+    print('MODEL:')
+    tp = np.mean(tp_per_fold)
+    fp = np.mean(fp_per_fold)
+    tn = np.mean(tn_per_fold)
+    fn = np.mean(fn_per_fold)
+    print(f'> Average loss: {np.mean(loss_per_fold)}')
+    print(f'> Average accuracy: {np.mean(acc_per_fold)} (+- {np.std(acc_per_fold)})')
+    print(f'> Average tp rate: {tp}')
+    print(f'> Average fp rate: {fp}')
+    print(f'> Average tn rate: {tn}')
+    print(f'> Average fn rate: {fn}')
+    print(f'> Average F1-score: {tp/(tp+0.5(fp+fn))}')
+    print(f'> Hyperparamers: {hp}') 
+    model.summary()
     print('------------------------------------------------------------------------')
 
 def main():
@@ -173,6 +149,7 @@ def main():
         inputs = inputs.reshape(len(inputs), 114, 1)
         out_channels = 3
 
+    
 
     # Set desired architecture
     hp = [32, 7, 3, 0.5, 75, 0.1, 'categorical_crossentropy']
