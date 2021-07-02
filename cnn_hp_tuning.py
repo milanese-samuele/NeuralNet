@@ -22,7 +22,6 @@ import csv
 
 
 def model_builder(hp, out_channels):
-    #cfn1, cks1, ps1, cfn2, cks2, ps2, dls, dr = hp
     num_filters, kernel_size, pool_size, dropout_rates, dense_layer_size, learning_rate, loss_function = hp
 
     model = Sequential()
@@ -89,6 +88,7 @@ def main():
     use_general_dataset = True # set to false for single patient dataset
     random_search = False # false = exhaustive gridsearch
     random_search_trials = 2
+    csv_tuning_filename = 'hyperparameter_metrics.csv'
 
     if use_general_dataset:
         patient_data, _ = gen_tuning_batch(utils.pns, 5, 100, 0.8)
@@ -115,21 +115,20 @@ def main():
     if (hyperparameter_tuning):
         # hyperparameter gridsearch set-up
         hp_grid = hyperparameter_grid_builder()
+        if random_search:
+            random.shuffle(hp_grid)
+            hp_grid = hp_grid[:random_search_trials]
 
     else:
         # Set desired architecture
         hp_grid = [[32, 5, 3, 0.3, 50, 0.1]]
         # best of ten fold with catcross, sgd, 3 epoch, batch 32 -> [8, 5, 3, 0.3, 25, 0.1]
 
-    if random_search:
-        random.shuffle(hp_grid)
-        hp_grid = hp_grid[:random_search_trials]
-
-    # Initialize model (average) accuracy, loss, and hp containers
+    # Initialize model (average) metrics and hp containers
     models_metrics = []
 
     # save metrics to file
-    with open('hyperparameter_metrics.csv', 'w', encoding='UTF8') as f:
+    with open(csv_tuning_filename, 'w', encoding='UTF8') as f:
         writer = csv.writer(f)
 
         # write the header
