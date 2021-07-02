@@ -18,6 +18,7 @@ from aug import *
 import utils
 
 import random
+import csv 
 
 
 def model_builder(hp, out_channels):
@@ -84,15 +85,16 @@ def set_metrics():
 
 def main():
     # Set to true if you wish to tune hyperparameter using exhaustive grid search
-    hyperparameter_tuning= True
-    use_general_dataset=True
-    random_search = True
+    hyperparameter_tuning = True # false = training
+    use_general_dataset = True # set to false for single patient dataset
+    random_search = False # false = exhaustive gridsearch
     random_search_trials = 2
 
     if use_general_dataset:
-        patient_data, _ = gen_tuning_batch(utils.pns, 5, 500, 0.8)
+        patient_data, _ = gen_tuning_batch(utils.pns, 5, 100, 0.8)
         labels = [w.btype for w in patient_data]
         labelset = list(set(labels))
+        print(f'Number of classes: {len(labelset)}')
         labels = np.asarray(utils.annotations_to_signal(labels, labelset))
         inputs = np.asarray([np.asarray(w.signal) for w in patient_data])
         # Reshape to fit model
@@ -124,74 +126,82 @@ def main():
         hp_grid = hp_grid[:random_search_trials]
 
     # Initialize model (average) accuracy, loss, and hp containers
-    models = []
-    models_average_accuracy = []
-    models_average_accuracy_std = []
-    models_average_loss = []
-    models_average_tp = []
-    models_average_fp = []
-    models_average_tn = []
-    models_average_fn = []
+    models_metrics = []
 
-    # Hyperparameter gridsearch loop
-    for itr, hp in enumerate(hp_grid):
-        # Print progress
-        print(f'Model {itr + 1}/{len(hp_grid)}')
+    # save metrics to file
+    with open('hyperparameter_metrics.csv', 'w', encoding='UTF8') as f:
+        writer = csv.writer(f)
 
-        # Initizalize per-fold score lists
-        acc_per_fold = []
-        loss_per_fold = []
-        tp_per_fold = []
-        fp_per_fold = []
-        tn_per_fold = []
-        fn_per_fold = []
+        # write the header
+        header = ['num_filters', 'kernel_size', 'pool_size', 'dropout_rates', 'dense_layer_size', 'learning_rate', 'loss_function', 'loss', 'acc', 'acc_std', 'tp', 'fp', 'tn', 'fn']
+        writer.writerow(header)
 
-        # Define the K-fold Cross Validator
-        kfold = KFold(n_splits=10, shuffle=True)
+        # Hyperparameter search loop
+        for itr, hp in enumerate(hp_grid):
+            # Print progress
+            print(f'Model {itr + 1}/{len(hp_grid)}')
 
-        # K-fold Cross Validation model evaluation
-        fold_no = 1
-        for train, test in kfold.split(inputs, labels):
-            #build model
-            model = model_builder(hp, out_channels)
+            # Initizalize per-fold score lists
+            acc_per_fold = []
+            loss_per_fold = []
+            tp_per_fold = []
+            fp_per_fold = []
+            tn_per_fold = []
+            fn_per_fold = []
 
-            model.fit(inputs[train], labels[train], epochs=3, batch_size=32, verbose=0) #tune batch size and epochs
+            # Define the K-fold Cross Validator
+            kfold = KFold(n_splits=10, shuffle=True)
 
+            # K-fold Cross Validation model evaluation
+            fold_no = 1
+            for train, test in kfold.split(inputs, labels):
+                #build model
+                model = model_builder(hp, out_channels)
 
-            scores = model.evaluate(inputs[test],
-                                    labels[test],
-                                    batch_size=32,
-                                    verbose=0)
-            #print(model.metrics_names)
-            #print(scores)
-            loss_per_fold.append(scores[0])
-            acc_per_fold.append(scores[1] * 100)
-            tp_per_fold.append(scores[2])
-            fp_per_fold.append(scores[3])
-            tn_per_fold.append(scores[4])
-            fn_per_fold.append(scores[5])
+                model.fit(inputs[train], labels[train], epochs=3, batch_size=32, verbose=0) #tune batch size and epochs
 
 
-        models_average_accuracy.append(np.mean(acc_per_fold))
-        models_average_accuracy_std.append(np.std(acc_per_fold))
-        models_average_loss.append(np.mean(loss_per_fold))
-        models_average_tp.append(np.mean(tp_per_fold))
-        models_average_fp.append(np.mean(fp_per_fold))
-        models_average_tn.append(np.mean(tn_per_fold))
-        models_average_fn.append(np.mean(fn_per_fold))
+                scores = model.evaluate(inputs[test],
+                                        labels[test],
+                                        batch_size=32,
+                                        verbose=0)
+                #print(model.metrics_names)
+                #print(scores)
+                loss_per_fold.append(scores[0])
+                acc_per_fold.append(scores[1] * 100)
+                tp_per_fold.append(scores[2])
+                fp_per_fold.append(scores[3])
+                tn_per_fold.append(scores[4])
+                fn_per_fold.append(scores[5])
 
+            average_loss = np.mean(loss_per_fold)
+            average_accuracy = np.mean(acc_per_fold)
+            average_accuracy_std = np.std(acc_per_fold)
+            average_tp = np.mean(tp_per_fold)
+            average_fp = np.mean(fp_per_fold)
+            average_tn = np.mean(tn_per_fold)
+            average_fn = np.mean(fn_per_fold)
 
-    print('------------------------------------------------------------------------')
-    print('BEST MODEL:')
-    index_best_model = models_average_accuracy.index(max(models_average_accuracy))
-    print(f'> Average accuracy: {models_average_accuracy[index_best_model]} (+- {models_average_accuracy_std[index_best_model]})')
-    print(f'> Average loss: {models_average_loss[index_best_model]}')
-    print(f'> Average tp rate: {models_average_tp[index_best_model]}')
-    print(f'> Average fp rate: {models_average_fp[index_best_model]}')
-    print(f'> Average tn rate: {models_average_tn[index_best_model]}')
-    print(f'> Average fn rate: {models_average_fn[index_best_model]}')
-    print(f'> Hyperparamers: {hp_grid[index_best_model]}')
-    print('------------------------------------------------------------------------')
+            models_metrics.append([average_loss, average_accuracy, average_accuracy_std, average_tp, average_fp, average_tn, average_fn])
+
+            # write the data
+            data = hp_grid[itr] + models_metrics[itr]
+            writer.writerow(data)
+
+        print('------------------------------------------------------------------------')
+        print('BEST MODEL:')
+        print(models_metrics)
+        models_average_accuracy = np.array(models_metrics)[:,1]
+        print(models_average_accuracy)
+        index_best_model = np.argmax(models_average_accuracy)
+        print(f'> Average loss: {models_metrics[index_best_model][0]}')
+        print(f'> Average accuracy: {models_metrics[index_best_model][1]} (+- {models_metrics[index_best_model][2]})')
+        print(f'> Average tp rate: {models_metrics[index_best_model][3]}')
+        print(f'> Average fp rate: {models_metrics[index_best_model][4]}')
+        print(f'> Average tn rate: {models_metrics[index_best_model][5]}')
+        print(f'> Average fn rate: {models_metrics[index_best_model][6]}')
+        print(f'> Hyperparamers: {hp_grid[index_best_model]}') 
+        print('------------------------------------------------------------------------')
 
 if __name__ == "__main__":
     main()
