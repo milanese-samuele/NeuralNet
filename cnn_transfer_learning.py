@@ -109,12 +109,17 @@ def k_fold_crossvalidation_training(inputs, labels, hp, output_size, model=None)
 
     print('------------------------------------------------------------------------')
     print('MODEL:')
+    tp = np.mean(tp_per_fold)
+    fp = np.mean(fp_per_fold)
+    tn = np.mean(tn_per_fold)
+    fn = np.mean(fn_per_fold)
     print(f'> Average loss: {np.mean(loss_per_fold)}')
     print(f'> Average accuracy: {np.mean(acc_per_fold)} (+- {np.std(acc_per_fold)})')
-    print(f'> Average tp rate: {np.mean(tp_per_fold)}')
-    print(f'> Average fp rate: {np.mean(fp_per_fold)}')
-    print(f'> Average tn rate: {np.mean(tn_per_fold)}')
-    print(f'> Average fn rate: {np.mean(fn_per_fold)}')
+    print(f'> Average tp rate: {tp}')
+    print(f'> Average fp rate: {fp}')
+    print(f'> Average tn rate: {tn}')
+    print(f'> Average fn rate: {fn}')
+    print(f'> Average F1-score: {tp/(tp+0.5(fp+fn))}')
     print(f'> Hyperparamers: {hp}') 
     model.summary()
     print('------------------------------------------------------------------------')
@@ -144,6 +149,7 @@ def main():
         inputs = inputs.reshape(len(inputs), 114, 1)
         out_channels = 3
 
+    
 
     # Set desired architecture
     hp = [32, 7, 3, 0.5, 75, 0.1, 'categorical_crossentropy']
