@@ -17,7 +17,10 @@ import matplotlib.pyplot as plt
 from aug import *
 import utils
 
-
+def compile_model(model, loss_function, learning_rate):
+    # Set evaluation metrics
+    metrics = set_metrics()
+    model.compile(loss=loss_function, optimizer=tf.keras.optimizers.SGD(lr=learning_rate), metrics=metrics)
 
 def model_builder(hp, out_channels):
     num_filters, kernel_size, pool_size, dropout_rates, dense_layer_size, learning_rate, loss_function = hp
@@ -36,10 +39,7 @@ def model_builder(hp, out_channels):
     #Layer 6
     model.add(Dense(out_channels, activation='softmax'))
 
-    # Set evaluation metrics
-    metrics = set_metrics()
-
-    model.compile(loss=loss_function, optimizer=tf.keras.optimizers.SGD(lr=learning_rate), metrics=metrics)
+    compile_model(model, loss_function, learning_rate)
 
     #model.summary()
 
@@ -54,11 +54,77 @@ def set_metrics():
                 tf.keras.metrics.TrueNegatives(name='tn'),
                 tf.keras.metrics.FalseNegatives(name='fn')]
 
+
+def generate_trained_general_model(inputs, labels, hp, output_size):
+    #build model
+    model = model_builder(hp, output_size)
+    model.fit(inputs, labels, epochs=3, batch_size=32, verbose=0) 
+
+    print('General Model:')
+    model.summary()
+
+    return model
+
+
+def k_fold_crossvalidation_training(inputs, labels, hp, output_size, model=None):
+    # Initialize model (average) metrics and hp containers
+    models_metrics = []
+
+    # Initizalize per-fold score lists
+    acc_per_fold = []
+    loss_per_fold = []
+    tp_per_fold = []
+    fp_per_fold = []
+    tn_per_fold = []
+    fn_per_fold = []
+
+    # Define the K-fold Cross Validator
+    kfold = KFold(n_splits=10, shuffle=True)
+
+    # K-fold Cross Validation model evaluation
+    fold_no = 1
+    for train, test in kfold.split(inputs, labels):
+        #build model
+        if model == None: 
+            model = model_builder(hp, out_channels)
+        else:
+            compile_model(model, loss_function=hp[-1], learning_rate=hp[-2])
+
+
+        model.fit(inputs[train], labels[train], epochs=3, batch_size=32, verbose=0) #tune batch size and epochs
+
+
+        scores = model.evaluate(inputs[test],
+                                labels[test],
+                                batch_size=32,
+                                verbose=0)
+        #print(model.metrics_names)
+        #print(scores)
+        loss_per_fold.append(scores[0])
+        acc_per_fold.append(scores[1] * 100)
+        tp_per_fold.append(scores[2])
+        fp_per_fold.append(scores[3])
+        tn_per_fold.append(scores[4])
+        fn_per_fold.append(scores[5])
+
+    print('------------------------------------------------------------------------')
+    print('MODEL:')
+    print(f'> Average loss: {np.mean(loss_per_fold)}')
+    print(f'> Average accuracy: {np.mean(acc_per_fold)} (+- {np.std(acc_per_fold)})')
+    print(f'> Average tp rate: {np.mean(tp_per_fold)}')
+    print(f'> Average fp rate: {np.mean(fp_per_fold)}')
+    print(f'> Average tn rate: {np.mean(tn_per_fold)}')
+    print(f'> Average fn rate: {np.mean(fn_per_fold)}')
+    print(f'> Hyperparamers: {hp}') 
+    model.summary()
+    print('------------------------------------------------------------------------')
+
 def main():
     use_general_dataset = True # set to false for single patient dataset
+    transfer_learning = True
 
     if use_general_dataset:
-        patient_data, _ = gen_tuning_batch(utils.pns, 5, 100, 0.8)
+        patient_data, patient_codes = gen_tuning_batch(utils.pns, 5, 100, 0.8)
         labels = [w.btype for w in patient_data]
         labelset = list(set(labels))
         print(f'Number of classes: {len(labelset)}')
@@ -81,66 +147,19 @@ def main():
 
     # Set desired architecture
     hp = [32, 7, 3, 0.5, 75, 0.1, 'categorical_crossentropy']
+    
+    if transfer_learning:
+        general_model = generate_trained_general_model(inputs, labels, hp, out_channels)
+        for layer in general_model.layers[:5]:
+            layer.trainable = False
+        for layer in general_model.layers:
+            print(layer, layer.trainable)
+        k_fold_crossvalidation_training(inputs, labels, hp, out_channels, general_model)
+    else:
+        k_fold_crossvalidation_training(inputs, labels, hp, out_channels)
+        
 
-    # Initialize model (average) metrics and hp containers
-    models_metrics = []
-
-    # Initizalize per-fold score lists
-    acc_per_fold = []
-    loss_per_fold = []
-    tp_per_fold = []
-    fp_per_fold = []
-    tn_per_fold = []
-    fn_per_fold = []
-
-    # Define the K-fold Cross Validator
-    kfold = KFold(n_splits=10, shuffle=True)
-
-    # K-fold Cross Validation model evaluation
-    fold_no = 1
-    for train, test in kfold.split(inputs, labels):
-        #build model
-        model = model_builder(hp, out_channels)
-
-        model.fit(inputs[train], labels[train], epochs=3, batch_size=32, verbose=0) #tune batch size and epochs
-
-
-        scores = model.evaluate(inputs[test],
-                                labels[test],
-                                batch_size=32,
-                                verbose=0)
-        #print(model.metrics_names)
-        #print(scores)
-        loss_per_fold.append(scores[0])
-        acc_per_fold.append(scores[1] * 100)
-        tp_per_fold.append(scores[2])
-        fp_per_fold.append(scores[3])
-        tn_per_fold.append(scores[4])
-        fn_per_fold.append(scores[5])
-
-    average_loss = np.mean(loss_per_fold)
-    average_accuracy = np.mean(acc_per_fold)
-    average_accuracy_std = np.std(acc_per_fold)
-    average_tp = np.mean(tp_per_fold)
-    average_fp = np.mean(fp_per_fold)
-    average_tn = np.mean(tn_per_fold)
-    average_fn = np.mean(fn_per_fold)
-
-    models_metrics.append([average_loss, average_accuracy, average_accuracy_std, average_tp, average_fp, average_tn, average_fn])
-
-
-    print('------------------------------------------------------------------------')
-    print('BEST MODEL:')
-    models_average_accuracy = np.array(models_metrics)[:,1]
-    index_best_model = np.argmax(models_average_accuracy)
-    print(f'> Average loss: {models_metrics[index_best_model][0]}')
-    print(f'> Average accuracy: {models_metrics[index_best_model][1]} (+- {models_metrics[index_best_model][2]})')
-    print(f'> Average tp rate: {models_metrics[index_best_model][3]}')
-    print(f'> Average fp rate: {models_metrics[index_best_model][4]}')
-    print(f'> Average tn rate: {models_metrics[index_best_model][5]}')
-    print(f'> Average fn rate: {models_metrics[index_best_model][6]}')
-    print(f'> Hyperparamers: {hp}') 
-    print('------------------------------------------------------------------------')
+    
 
 if __name__ == "__main__":
     main()
