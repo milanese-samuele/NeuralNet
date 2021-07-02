@@ -58,8 +58,13 @@ def set_metrics():
 
     if use_general_dataset:
         patient_names, labelset = select_patients(utils.pns, 5)
-        # select one random patient
-        specific_patient = random.sample(patient_names, 1)
+        general_batch, labelset = gen_tuning_batch(patient_names,
+                                                   labelset, 100, 0.3)
+        print(labelset)
+        print([p.number for p in patient_names])
+        print(len(general_batch))
+        generate_training_batches(patient_names, general_batch, labelset)
+
         # make one patient data
         patient_data = balance_patient(specific_patient.number)
         patient_labels = [w.btype for w in patient_data]
