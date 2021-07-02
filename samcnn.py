@@ -21,7 +21,8 @@ import random
 import csv
 
 def model_builder(hp, out_channels):
-    num_filters, kernel_size, pool_size, dropout_rates, dense_layer_size, learning_rate, loss_function = hp
+    #cfn1, cks1, ps1, cfn2, cks2, ps2, dls, dr = hp
+    num_filters, kernel_size, pool_size, dropout_rates, dense_layer_size, learning_rate, loss_function, _ = hp
 
     model = Sequential()
     #Layer 1
@@ -83,17 +84,15 @@ def set_metrics():
 
 def main():
     # Set to true if you wish to tune hyperparameter using exhaustive grid search
-    hyperparameter_tuning = True # false = training
-    use_general_dataset = True # set to false for single patient dataset
-    random_search = False # false = exhaustive gridsearch
-    random_search_trials = 2
-    csv_tuning_filename = 'hyperparameter_metrics.csv'
+    hyperparameter_tuning= True
+    use_general_dataset=True
+    random_search = True
+    random_search_trials = 700
 
     if use_general_dataset:
-        patient_data, _ = gen_tuning_batch(utils.pns, 5, 100, 0.8)
+        patient_data, _ = gen_tuning_batch(utils.pns, 5, 500, 0.8)
         labels = [w.btype for w in patient_data]
         labelset = list(set(labels))
-        print(f'Number of classes: {len(labelset)}')
         labels = np.asarray(utils.annotations_to_signal(labels, labelset))
         inputs = np.asarray([np.asarray(w.signal) for w in patient_data])
         # Reshape to fit model
@@ -114,27 +113,48 @@ def main():
     if (hyperparameter_tuning):
         # hyperparameter gridsearch set-up
         hp_grid = hyperparameter_grid_builder()
-        if random_search:
-            random.shuffle(hp_grid)
-            hp_grid = hp_grid[:random_search_trials]
 
     else:
         # Set desired architecture
-        hp_grid = [[32, 7, 3, 0.5, 75, 0.1, 'categorical_crossentropy'] #best of tenfold gridsearch
+        hp_grid = [[32, 5, 3, 0.3, 50, 0.1]]
+        # best of ten fold with catcross, sgd, 3 epoch, batch 32 -> [8, 5, 3, 0.3, 25, 0.1]
 
-    # Initialize model (average) metrics and hp containers
-    models_metrics = []
+    if random_search:
+        random.shuffle(hp_grid)
+        hp_grid = hp_grid[:random_search_trials]
+
+    # Initialize model (average) accuracy, loss, and hp containers
+    models = []
+    models_average_accuracy = []
+    models_average_accuracy_std = []
+    models_average_loss = []
+    models_average_tp = []
+    models_average_fp = []
+    models_average_tn = []
+    models_average_fn = []
 
     # save metrics to file
-    with open(csv_tuning_filename, 'w', encoding='UTF8') as f:
+    with open('hyperparameter_metrics.csv', 'w', encoding='UTF8') as f:
         writer = csv.writer(f)
 
         # write the header
-        header = ['num_filters', 'kernel_size', 'pool_size', 'dropout_rates', 'dense_layer_size', 'learning_rate', 'loss_function', 'loss', 'acc', 'acc_std', 'tp', 'fp', 'tn', 'fn']
+        header = ['acc', 'std', 'loss', 'tp', 'fp', 'tn', 'fn', 'hp']
         writer.writerow(header)
 
-        # Hyperparameter search loop
+        # Hyperparameter gridsearch loop
         for itr, hp in enumerate(hp_grid):
+
+            ds = hp[-1]
+            patient_data, _ = gen_tuning_batch(utils.pns, 5, 500, ds)
+            labels = [w.btype for w in patient_data]
+            labelset = list(set(labels))
+            labels = np.asarray(utils.annotations_to_signal(labels, labelset))
+            inputs = np.asarray([np.asarray(w.signal) for w in patient_data])
+            # Reshape to fit model
+            inputs = inputs.reshape(len(inputs), 114, 1)
+            out_channels = len(labelset)
+
+
             # Print progress
             print(f'Model {itr + 1}/{len(hp_grid)}')
 
@@ -171,32 +191,38 @@ def main():
                 tn_per_fold.append(scores[4])
                 fn_per_fold.append(scores[5])
 
-            average_loss = np.mean(loss_per_fold)
-            average_accuracy = np.mean(acc_per_fold)
-            average_accuracy_std = np.std(acc_per_fold)
-            average_tp = np.mean(tp_per_fold)
-            average_fp = np.mean(fp_per_fold)
-            average_tn = np.mean(tn_per_fold)
-            average_fn = np.mean(fn_per_fold)
 
-            models_metrics.append([average_loss, average_accuracy, average_accuracy_std, average_tp, average_fp, average_tn, average_fn])
+                models_average_accuracy.append(np.mean(acc_per_fold))
+                models_average_accuracy_std.append(np.std(acc_per_fold))
+                models_average_loss.append(np.mean(loss_per_fold))
+                models_average_tp.append(np.mean(tp_per_fold))
+                models_average_fp.append(np.mean(fp_per_fold))
+                models_average_tn.append(np.mean(tn_per_fold))
+                models_average_fn.append(np.mean(fn_per_fold))
 
-            # write the data
-            data = hp_grid[itr] + models_metrics[itr]
-            writer.writerow(data)
+            writer.writerow([
+                np.mean (models_average_accuracy [itr]),
+                np.std (models_average_accuracy_std [itr]),
+                np.mean (models_average_loss [itr]),
+                np.mean (models_average_tp [itr]),
+                np.mean (models_average_fp [itr]),
+                np.mean (models_average_tn [itr]),
+                np.mean (models_average_fn [itr] ),
+                hp
+            ])
 
-        print('------------------------------------------------------------------------')
-        print('BEST MODEL:')
-        models_average_accuracy = np.array(models_metrics)[:,1]
-        index_best_model = np.argmax(models_average_accuracy)
-        print(f'> Average loss: {models_metrics[index_best_model][0]}')
-        print(f'> Average accuracy: {models_metrics[index_best_model][1]} (+- {models_metrics[index_best_model][2]})')
-        print(f'> Average tp rate: {models_metrics[index_best_model][3]}')
-        print(f'> Average fp rate: {models_metrics[index_best_model][4]}')
-        print(f'> Average tn rate: {models_metrics[index_best_model][5]}')
-        print(f'> Average fn rate: {models_metrics[index_best_model][6]}')
-        print(f'> Hyperparamers: {hp_grid[index_best_model]}')
-        print('------------------------------------------------------------------------')
+
+    print('------------------------------------------------------------------------')
+    print('BEST MODEL:')
+    index_best_model = models_average_accuracy.index(max(models_average_accuracy))
+    print(f'> Average accuracy: {models_average_accuracy[index_best_model]} (+- {models_average_accuracy_std[index_best_model]})')
+    print(f'> Average loss: {models_average_loss[index_best_model]}')
+    print(f'> Average tp rate: {models_average_tp[index_best_model]}')
+    print(f'> Average fp rate: {models_average_fp[index_best_model]}')
+    print(f'> Average tn rate: {models_average_tn[index_best_model]}')
+    print(f'> Average fn rate: {models_average_fn[index_best_model]}')
+    print(f'> Hyperparamers: {hp_grid[index_best_model]}')
+    print('------------------------------------------------------------------------')
 
 if __name__ == "__main__":
     main()
