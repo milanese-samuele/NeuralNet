@@ -190,9 +190,7 @@ def main():
 
         print('------------------------------------------------------------------------')
         print('BEST MODEL:')
-        print(models_metrics)
         models_average_accuracy = np.array(models_metrics)[:,1]
-        print(models_average_accuracy)
         index_best_model = np.argmax(models_average_accuracy)
         print(f'> Average loss: {models_metrics[index_best_model][0]}')
         print(f'> Average accuracy: {models_metrics[index_best_model][1]} (+- {models_metrics[index_best_model][2]})')
