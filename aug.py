@@ -52,19 +52,7 @@ def balance_patient (pn: int, ds: float, n):
             new_batch.append (_)
     return random.sample (new_batch, len (new_batch))
 
-def gen_tuning_batch (pns, n_outs, min_samples, ds):
-    """
-    @brief      Generates a balanced batch of windows from patients selected
-                through some criteria
-
-    @param      pns : list of patient numbers in the dataset
-                n_outs : desired number of output channels
-                min_samples : minimal size of beat type occurrence
-                ds : downsampling factor
-
-    @return     a balanced batch and the selected patients from which it is
-                generated
-    """
+def select_patients(pns, n_outs):
     labs = set ()
     selected_p = []
     for p in pns:
@@ -78,12 +66,28 @@ def gen_tuning_batch (pns, n_outs, min_samples, ds):
         selected_p.append (patient)
         for lab, _ in cnt:
             labs.add (lab)
+    return selected_p, labs
+
+
+def gen_tuning_batch (pns, labs, min_samples, ds):
+    """
+    @brief      Generates a balanced batch of windows from patients selected
+                through some criteria
+
+    @param      pns : list of patient numbers in the dataset
+                n_outs : desired number of output channels
+                min_samples : minimal size of beat type occurrence
+                ds : downsampling factor
+
+    @return     a balanced batch and the selected patients from which it is
+                generated
+    """
 
     eqfilt = lambda x : lab == x.btype
     # Build batch
     batch = []
     for lab in labs:
-        for p in selected_p:
+        for p in pns:
             for _ in list (filter (eqfilt, p.wins)):
                 batch.append (_)
 
@@ -105,4 +109,4 @@ def gen_tuning_batch (pns, n_outs, min_samples, ds):
             for _ in random.sample(list (filter (eqfilt, batch)),new_length):
                 balanced_batch.append (_)
 
-    return random.sample (balanced_batch, len (balanced_batch)), selected_p
+    return random.sample (balanced_batch, len (balanced_batch))
