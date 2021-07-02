@@ -65,8 +65,17 @@ def generate_trained_general_model(inputs, labels, hp, output_size):
 
     return model
 
+def plot_box_and_whisker(transfer_learning_acc, non_transfer_learning_acc):
+    data = [transfer_learning_acc, non_transfer_learning_acc]
 
-def k_fold_crossvalidation_training(inputs, labels, hp, output_size, model=None):
+    fig1, ax1 = plt.subplots()
+    ax1.set_title('10-fold Crossvalidation Accuracy: Transfer Learning vs Non-Transfer Learning')
+    ax1.boxplot(data)
+
+    plt.show()
+
+
+def k_fold_crossvalidation_training(inputs, labels, hp, output_size, K, model=None, verbose=1):
     # Initialize model (average) metrics and hp containers
     models_metrics = []
 
@@ -79,14 +88,14 @@ def k_fold_crossvalidation_training(inputs, labels, hp, output_size, model=None)
     fn_per_fold = []
 
     # Define the K-fold Cross Validator
-    kfold = KFold(n_splits=10, shuffle=True)
+    kfold = KFold(n_splits=K, shuffle=True)
 
     # K-fold Cross Validation model evaluation
     fold_no = 1
     for train, test in kfold.split(inputs, labels):
         #build model
         if model == None: 
-            model = model_builder(hp, out_channels)
+            model = model_builder(hp, output_size)
         else:
             compile_model(model, loss_function=hp[-1], learning_rate=hp[-2])
 
@@ -106,65 +115,88 @@ def k_fold_crossvalidation_training(inputs, labels, hp, output_size, model=None)
         fp_per_fold.append(scores[3])
         tn_per_fold.append(scores[4])
         fn_per_fold.append(scores[5])
-
-    print('------------------------------------------------------------------------')
-    print('MODEL:')
+    
+    average_acc = np.mean(acc_per_fold)
     tp = np.mean(tp_per_fold)
     fp = np.mean(fp_per_fold)
     tn = np.mean(tn_per_fold)
     fn = np.mean(fn_per_fold)
-    print(f'> Average loss: {np.mean(loss_per_fold)}')
-    print(f'> Average accuracy: {np.mean(acc_per_fold)} (+- {np.std(acc_per_fold)})')
-    print(f'> Average tp rate: {tp}')
-    print(f'> Average fp rate: {fp}')
-    print(f'> Average tn rate: {tn}')
-    print(f'> Average fn rate: {fn}')
-    print(f'> Average F1-score: {tp/(tp+0.5(fp+fn))}')
-    print(f'> Hyperparamers: {hp}') 
-    model.summary()
-    print('------------------------------------------------------------------------')
+    
+    if verbose:
+        print('------------------------------------------------------------------------')
+        print('MODEL:')
+        print(f'> Average loss: {np.mean(loss_per_fold)}')
+        print(f'> Average accuracy: {average_acc} (+- {np.std(acc_per_fold)})')
+        print(f'> Average tp rate: {tp}')
+        print(f'> Average fp rate: {fp}')
+        print(f'> Average tn rate: {tn}')
+        print(f'> Average fn rate: {fn}')
+        #print(f'> Average F1-score: {tp/(tp+0.5(fp+fn))}')
+        print(f'> Hyperparamers: {hp}') 
+        model.summary()
+        print('------------------------------------------------------------------------')
+
+    return average_acc
 
 def main():
-    use_general_dataset = True # set to false for single patient dataset
-    transfer_learning = True
+    mode = 3 #0 = transfer_learning, 1 = single_patient, 2 = all_patients, 3 = transfer_learning vs non_transfer learning (single_patient)
 
-    if use_general_dataset:
-        patient_data, patient_codes = gen_tuning_batch(utils.pns, 5, 100, 0.8)
-        labels = [w.btype for w in patient_data]
-        labelset = list(set(labels))
-        print(f'Number of classes: {len(labelset)}')
-        labels = np.asarray(utils.annotations_to_signal(labels, labelset))
-        inputs = np.asarray([np.asarray(w.signal) for w in patient_data])
-        # Reshape to fit model
-        inputs = inputs.reshape(len(inputs), 114, 1)
-        out_channels = len(labelset)
-    else:
-        # Inputs and labels from a preprocessed patient
-        patient_data = balance_patient(208, 0.1, 3)
-        labels = [w.btype for w in patient_data]
-        # one hot encoding
-        labels = np.asarray(utils.annotations_to_signal(labels, ["F", "V", "N"]))
-        inputs = np.asarray([np.asarray(w.signal) for w in patient_data])
-        # Reshape to fit model
-        inputs = inputs.reshape(len(inputs), 114, 1)
-        out_channels = 3
+    K = 2 # number of folds for crossvalidation 
 
-    
+
+    patient_objects, labelset = select_patients(utils.pns, 5) #all patients with at least 5 classes
+    general_batch, labelset = gen_batch(patient_objects, labelset, 100, ds=0.8) #all classes with at least 100 samples
+    print(labelset)
+    print([p.number for p in patient_objects])
+    print(len(general_batch))
 
     # Set desired architecture
     hp = [32, 7, 3, 0.5, 75, 0.1, 'categorical_crossentropy']
     
-    if transfer_learning:
-        general_model = generate_trained_general_model(inputs, labels, hp, out_channels)
-        for layer in general_model.layers[:5]:
+    if mode == 0: #transfer learning
+        general_patient_data, general_patient_data_labels, single_patient_data, single_patient_data_labels = next(generate_training_batches(patient_objects, general_batch, labelset))
+        output_size = len(labelset)
+        general_model = generate_trained_general_model(general_patient_data, general_patient_data_labels, hp, output_size)
+        for layer in general_model.layers[:4]:
             layer.trainable = False
         for layer in general_model.layers:
             print(layer, layer.trainable)
-        k_fold_crossvalidation_training(inputs, labels, hp, out_channels, general_model)
-    else:
-        k_fold_crossvalidation_training(inputs, labels, hp, out_channels)
-        
+        k_fold_crossvalidation_training(single_patient_data, single_patient_data_labels, hp, output_size, K, general_model)
+    if mode == 1: # single patient
+        general_patient_data, general_patient_data_labels, single_patient_data, single_patient_data_labels = next(generate_training_batches(patient_objects, general_batch, labelset))
+        output_size = len(labelset)
+        k_fold_crossvalidation_training(single_patient_data, single_patient_data_labels, hp, output_size, K)
+    if mode == 2: # all patients
+        general_patient_data, general_patient_data_labels, single_patient_data, single_patient_data_labels = next(generate_training_batches(patient_objects, general_batch, labelset))
+        output_size = len(labelset)
+        k_fold_crossvalidation_training(general_patient_data, general_patient_data_labels, hp, K, output_size)
+    if mode == 3: # comparing transfer learning with non-transfer learning
+        acc_transfer_learning = []
+        acc_non_transfer_learning = []
+        for general_patient_data, general_patient_data_labels, single_patient_data, single_patient_data_labels in generate_training_batches(patient_objects, general_batch, labelset):
+            output_size = len(labelset)
+            # transfer learning
+            general_model = generate_trained_general_model(general_patient_data, general_patient_data_labels, hp, output_size)
+            number_of_frozen_layers = 5
+            for layer in general_model.layers[:number_of_frozen_layers]:
+                layer.trainable = False
+            acc_transfer_learning.append(k_fold_crossvalidation_training(single_patient_data, single_patient_data_labels, hp, output_size, K, general_model, verbose=0))
+            # non-transfer learning
+            acc_non_transfer_learning.append(k_fold_crossvalidation_training(single_patient_data, single_patient_data_labels, hp, output_size, K, verbose=0))
+        avrg_acc_tl = np.mean(acc_transfer_learning)
+        avrg_acc_tl_std = np.std(acc_transfer_learning)
+        avrg_acc_ntl = np.mean(acc_non_transfer_learning)
+        avrg_acc_ntl_std = np.std(acc_non_transfer_learning)
+        print('------------------------------------------------------------------------')
+        print(f'Number of cross-validation folds: {K}')
+        print(f'Number of frozen layers: {number_of_frozen_layers}')
+        print(f'Average transfer learning accuracy: {avrg_acc_tl} +- {avrg_acc_tl_std}')
+        print(f'Average non_transfer learning accuracy: {avrg_acc_ntl} +- {avrg_acc_ntl_std}')
+        print('------------------------------------------------------------------------')
+        plot_box_and_whisker(avrg_acc_tl, avrg_acc_ntl)
 
+
+        
     
 
 if __name__ == "__main__":

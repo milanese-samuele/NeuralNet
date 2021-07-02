@@ -168,6 +168,22 @@ def main():
         labels = [w.btype for w in patient_data]
         # one hot encoding
         labels = np.asarray(utils.annotations_to_signal(labels, ["F", "V", "N"]))
+        inputs = np.asarray([nif use_general_dataset:
+        patient_data, patient_codes = gen_tuning_batch(utils.pns, 5, 100, 0.8)
+        labels = [w.btype for w in patient_data]
+        labelset = list(set(labels))
+        print(f'Number of classes: {len(labelset)}')
+        labels = np.asarray(utils.annotations_to_signal(labels, labelset))
+        inputs = np.asarray([np.asarray(w.signal) for w in patient_data])
+        # Reshape to fit model
+        inputs = inputs.reshape(len(inputs), 114, 1)
+        out_channels = len(labelset)
+    else:
+        # Inputs and labels from a preprocessed patient
+        patient_data = balance_patient(208, 0.1, 3)
+        labels = [w.btype for w in patient_data]
+        # one hot encoding
+        labels = np.asarray(utils.annotations_to_signal(labels, ["F", "V", "N"]))
         inputs = np.asarray([np.asarray(w.signal) for w in patient_data])
         # Reshape to fit model
         inputs = inputs.reshape(len(inputs), 114, 1)

@@ -71,7 +71,7 @@ def select_patients(pns, n_outs):
     return selected_p, labs
 
 
-def gen_tuning_batch (pns, labs, min_samples, ds):
+def gen_batch (pns, labs, min_samples, ds):
     """
     @brief      Generates a balanced batch of windows from patients selected
                 through some criteria
@@ -118,7 +118,7 @@ def gen_tuning_batch (pns, labs, min_samples, ds):
 def gen_inputs(batch, labelset):
     labels = [w.btype for w in batch]
     # One hot encoding
-    labels = np.asarray(annotations_to_signal(labels, labelset))
+    labels = np.asarray(annotations_to_signal(labels, list(labelset)))
     inputs = np.asarray([np.asarray(w.signal) for w in batch])
     # Reshape to fit model
     inputs = inputs.reshape(len(inputs), 114, 1)
