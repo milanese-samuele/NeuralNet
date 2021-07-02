@@ -55,10 +55,10 @@ def window_factory(pnumber: int, data_path="./mitbih_database/", **kwargs):
     return create_windows(r_peaks, bwfilter(full),
                           kwargs.get('onset', 57), #44
                           kwargs.get('offset', 57), #70
-                          annotations)
+                          annotations, pnumber)
 
 
-def create_windows(rps, data, onset, offset, anns):
+def create_windows(rps, data, onset, offset, anns, pnr):
     """
     @brief      builds Window objects with data and annotations
                 to be used only by Window object creation
@@ -70,6 +70,6 @@ def create_windows(rps, data, onset, offset, anns):
     for ts, a in anns:
         for win in tmp:
             if ts in win [0] and len (win [1]) == onset+offset:
-                wins.append (Window (win, a))
+                wins.append (Window (win, a, pnr))
                 break
     return wins
