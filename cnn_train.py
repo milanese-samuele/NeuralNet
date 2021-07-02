@@ -171,16 +171,6 @@ def main():
 
     # Set desired architecture
     hp = [32, 7, 3, 0.5, 75, 0.1, 'categorical_crossentropy']
-    
-    if transfer_learning:
-        general_model = generate_trained_general_model(inputs, labels, hp, out_channels)
-        for layer in general_model.layers[:5]:
-            layer.trainable = False
-        for layer in general_model.layers:
-            print(layer, layer.trainable)
-        k_fold_crossvalidation_training(inputs, labels, hp, out_channels, general_model)
-    else:
-        k_fold_crossvalidation_training(inputs, labels, hp, out_channels)
         
 
     

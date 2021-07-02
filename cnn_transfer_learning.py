@@ -91,7 +91,7 @@ def k_fold_crossvalidation_training(inputs, labels, hp, output_size, model=None)
             compile_model(model, loss_function=hp[-1], learning_rate=hp[-2])
 
 
-        model.fit(inputs[train], labels[train], epochs=3, batch_size=32, verbose=0) #tune batch size and epochs
+        history = model.fit(inputs[train], labels[train], epochs=3, batch_size=32, verbose=0) #tune batch size and epochs
 
 
         scores = model.evaluate(inputs[test],
