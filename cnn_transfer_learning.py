@@ -158,7 +158,7 @@ def k_fold_crossvalidation_training(inputs, labels, hp, output_size, K, model=No
 def main():
     mode = 3 #0 = transfer_learning, 1 = single_patient, 2 = all_patients, 3 = transfer_learning vs non_transfer learning (single_patient)
     number_of_frozen_layers = 4 # only applicable in mode 0 and 3
-    K = 5 # number of folds for crossvalidation
+    K = 100 # number of folds for crossvalidation
 
 
     patient_objects, labelset = select_patients(utils.pns, 5) #all patients with at least 5 classes
