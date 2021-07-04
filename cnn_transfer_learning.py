@@ -88,6 +88,25 @@ def plot_box_and_whisker(data_acc, data_sens, data_prec, data_f1):
     plt.savefig ('./results/plot.png')
     plt.show()
 
+def errorbar_data (data):
+    means = [np.mean (x) for x in data]
+    stds = [np.std (x) for x in data]
+    return means, stds
+
+def plot_training (loss_data, accuracy_data, K):
+    fig1, axs = plt.subplots(2,1)
+    loss_pts, loss_err = errorbar_data (loss_data)
+    acc_pts, acc_err = errorbar_data (accuracy_data)
+    axs [0].errorbar (range (1, len (loss_pts) + 1), loss_pts, yerr= loss_err, label='loss', color='r')
+    axs [1].errorbar (range (1, len (acc_pts) + 1), acc_pts, yerr= acc_err, label='accuracy', color='g')
+    axs [0].set_xlabel ("Training epoch", fontsize=12)
+    axs [0].set_ylabel ("Loss (%)", fontsize=16)
+    axs [1].set_xlabel ("Training epoch", fontsize=12)
+    axs [1].set_ylabel ("Accuracy (%)", fontsize=16)
+    fig1.suptitle ("Training loss and accuracy per epoch", fontsize=22)
+    plt.savefig ('./results/training_plot.png')
+    plt.show ()
+
 
 def k_fold_crossvalidation_training(inputs, labels, hp, output_size, K, model=None, verbose=1):
     # Initialize model (average) metrics and hp containers
@@ -106,6 +125,11 @@ def k_fold_crossvalidation_training(inputs, labels, hp, output_size, K, model=No
 
     # K-fold Cross Validation model evaluation
     fold_no = 1
+
+    # Training Analysis
+    loss_data = []
+    acc_data = []
+
     for train, test in kfold.split(inputs, labels):
         #build model
         if model == None:
@@ -115,6 +139,8 @@ def k_fold_crossvalidation_training(inputs, labels, hp, output_size, K, model=No
 
 
         history = model.fit(inputs[train], labels[train], epochs=3, batch_size=32, verbose=0) #tune batch size and epochs
+        loss_data.append (history.history ['loss'])
+        acc_data.append (history.history ['accuracy'])
 
 
         scores = model.evaluate(inputs[test],
@@ -129,6 +155,8 @@ def k_fold_crossvalidation_training(inputs, labels, hp, output_size, K, model=No
         fp_per_fold.append(scores[3])
         tn_per_fold.append(scores[4])
         fn_per_fold.append(scores[5])
+
+    plot_training (np.transpose (loss_data), np.transpose (acc_data), K)
 
     average_acc = np.mean(acc_per_fold)
     tp = np.mean(tp_per_fold)
@@ -148,7 +176,7 @@ def k_fold_crossvalidation_training(inputs, labels, hp, output_size, K, model=No
         print(f'> Average fp rate: {fp}')
         print(f'> Average tn rate: {tn}')
         print(f'> Average fn rate: {fn}')
-        #print(f'> Average F1-score: {tp/(tp+0.5(fp+fn))}')
+        print(f'> Average F1-score: {f1}')
         print(f'> Hyperparamers: {hp}')
         model.summary()
         print('------------------------------------------------------------------------')
@@ -156,9 +184,9 @@ def k_fold_crossvalidation_training(inputs, labels, hp, output_size, K, model=No
     return average_acc, avg_precision, avg_sensitivity, f1
 
 def main():
-    mode = 2 #0 = transfer_learning, 1 = single_patient, 2 = all_patients, 3 = transfer_learning vs non_transfer learning (single_patient)
+    mode = 1 #0 = transfer_learning, 1 = single_patient, 2 = all_patients, 3 = transfer_learning vs non_transfer learning (single_patient)
     number_of_frozen_layers = 4 # only applicable in mode 0 and 3
-    K = 100 # number of folds for crossvalidation
+    K = 10 # number of folds for crossvalidation
 
 
     patient_objects, labelset = select_patients(utils.pns, 5) #all patients with at least 5 classes

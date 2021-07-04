@@ -11,9 +11,9 @@ def show_window ():
     sig = wins [n].signal
     lab = wins [n].btype
     plt.plot (range (len (sig)), sig)
-    plt.title (f"Window #190 from Patient 108 Type: Normal")
-    plt.xlabel ("# Sample")
-    plt.ylabel ("Sample Value")
+    plt.title (f"Window #190 from Patient 108 Type: Normal", fontsize = 22)
+    plt.xlabel ("# Sample", fontsize = 18)
+    plt.ylabel ("Sample Value", fontsize = 18)
     plt.show ()
 
 
@@ -41,5 +41,5 @@ def show_filter():
     plt.show ()
 
 if __name__ == '__main__':
-    show_filter ()
-    # show_window ()
+    # show_filter ()
+    show_window ()
