@@ -156,9 +156,9 @@ def k_fold_crossvalidation_training(inputs, labels, hp, output_size, K, model=No
     return average_acc, avg_precision, avg_sensitivity, f1
 
 def main():
-    mode = 1 #0 = transfer_learning, 1 = single_patient, 2 = all_patients, 3 = transfer_learning vs non_transfer learning (single_patient)
+    mode = 2 #0 = transfer_learning, 1 = single_patient, 2 = all_patients, 3 = transfer_learning vs non_transfer learning (single_patient)
     number_of_frozen_layers = 4 # only applicable in mode 0 and 3
-    K = 5 # number of folds for crossvalidation
+    K = 100 # number of folds for crossvalidation
 
 
     patient_objects, labelset = select_patients(utils.pns, 5) #all patients with at least 5 classes
@@ -183,10 +183,10 @@ def main():
         k_fold_crossvalidation_training(single_patient_data, single_patient_data_labels, hp, output_size, K, general_model)
     if mode == 1: # single patient
         general_patient_data, general_patient_data_labels, single_patient_data, single_patient_data_labels = next(generate_training_batches(patient_objects, general_batch, labelset))
-        k_fold_crossvalidation_training(single_patient_data, single_patient_data_labels, hp, output_size, K)
+        print(k_fold_crossvalidation_training(single_patient_data, single_patient_data_labels, hp, output_size, K))
     if mode == 2: # all patients
         general_patient_data, general_patient_data_labels, single_patient_data, single_patient_data_labels = next(generate_training_batches(patient_objects, general_batch, labelset))
-        k_fold_crossvalidation_training(general_patient_data, general_patient_data_labels, hp, K, output_size)
+        print(k_fold_crossvalidation_training(general_patient_data, general_patient_data_labels, hp, K, output_size))
     if mode == 3: # comparing transfer learning with non-transfer learning
         acc_transfer_learning = []
         acc_non_transfer_learning = []
