@@ -58,7 +58,7 @@ def set_metrics():
 def generate_trained_general_model(inputs, labels, hp, output_size):
     #build model
     model = model_builder(hp, output_size)
-    model.fit(inputs, labels, epochs=3, batch_size=32, verbose=0) 
+    model.fit(inputs, labels, epochs=3, batch_size=32, verbose=0)
 
     print('General Model:')
     model.summary()
@@ -94,7 +94,7 @@ def k_fold_crossvalidation_training(inputs, labels, hp, output_size, K, model=No
     fold_no = 1
     for train, test in kfold.split(inputs, labels):
         #build model
-        if model == None: 
+        if model == None:
             model = model_builder(hp, output_size)
         else:
             compile_model(model, loss_function=hp[-1], learning_rate=hp[-2])
@@ -115,13 +115,13 @@ def k_fold_crossvalidation_training(inputs, labels, hp, output_size, K, model=No
         fp_per_fold.append(scores[3])
         tn_per_fold.append(scores[4])
         fn_per_fold.append(scores[5])
-    
+
     average_acc = np.mean(acc_per_fold)
     tp = np.mean(tp_per_fold)
     fp = np.mean(fp_per_fold)
     tn = np.mean(tn_per_fold)
     fn = np.mean(fn_per_fold)
-    
+
     if verbose:
         print('------------------------------------------------------------------------')
         print('MODEL:')
@@ -132,7 +132,7 @@ def k_fold_crossvalidation_training(inputs, labels, hp, output_size, K, model=No
         print(f'> Average tn rate: {tn}')
         print(f'> Average fn rate: {fn}')
         #print(f'> Average F1-score: {tp/(tp+0.5(fp+fn))}')
-        print(f'> Hyperparamers: {hp}') 
+        print(f'> Hyperparamers: {hp}')
         model.summary()
         print('------------------------------------------------------------------------')
 
@@ -141,10 +141,12 @@ def k_fold_crossvalidation_training(inputs, labels, hp, output_size, K, model=No
 def main():
     mode = 3 #0 = transfer_learning, 1 = single_patient, 2 = all_patients, 3 = transfer_learning vs non_transfer learning (single_patient)
 
-    K = 2 # number of folds for crossvalidation 
+    K = 2 # number of folds for crossvalidation
 
 
     patient_objects, labelset = select_patients(utils.pns, 5) #all patients with at least 5 classes
+    print ("patients:")
+    print (len (patient_objects))
     general_batch, labelset = gen_batch(patient_objects, labelset, 100, ds=0.8) #all classes with at least 100 samples
     print(labelset)
     print([p.number for p in patient_objects])
@@ -152,7 +154,7 @@ def main():
 
     # Set desired architecture
     hp = [32, 7, 3, 0.5, 75, 0.1, 'categorical_crossentropy']
-    
+
     if mode == 0: #transfer learning
         general_patient_data, general_patient_data_labels, single_patient_data, single_patient_data_labels = next(generate_training_batches(patient_objects, general_batch, labelset))
         output_size = len(labelset)
@@ -196,8 +198,8 @@ def main():
         plot_box_and_whisker(avrg_acc_tl, avrg_acc_ntl)
 
 
-        
-    
+
+
 
 if __name__ == "__main__":
     main()
