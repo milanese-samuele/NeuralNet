@@ -140,8 +140,8 @@ def k_fold_crossvalidation_training(inputs, labels, hp, output_size, K, model=No
 
 def main():
     mode = 3 #0 = transfer_learning, 1 = single_patient, 2 = all_patients, 3 = transfer_learning vs non_transfer learning (single_patient)
-
-    K = 2 # number of folds for crossvalidation
+    number_of_frozen_layers = 4 # only applicable in mode 0 and 3
+    K = 100 # number of folds for crossvalidation
 
 
     patient_objects, labelset = select_patients(utils.pns, 5) #all patients with at least 5 classes
@@ -151,35 +151,31 @@ def main():
     print(labelset)
     print([p.number for p in patient_objects])
     print(len(general_batch))
+    output_size = len(labelset)
 
     # Set desired architecture
     hp = [32, 7, 3, 0.5, 75, 0.1, 'categorical_crossentropy']
 
     if mode == 0: #transfer learning
         general_patient_data, general_patient_data_labels, single_patient_data, single_patient_data_labels = next(generate_training_batches(patient_objects, general_batch, labelset))
-        output_size = len(labelset)
         general_model = generate_trained_general_model(general_patient_data, general_patient_data_labels, hp, output_size)
-        for layer in general_model.layers[:4]:
+        for layer in general_model.layers[:number_of_frozen_layers]:
             layer.trainable = False
         for layer in general_model.layers:
             print(layer, layer.trainable)
         k_fold_crossvalidation_training(single_patient_data, single_patient_data_labels, hp, output_size, K, general_model)
     if mode == 1: # single patient
         general_patient_data, general_patient_data_labels, single_patient_data, single_patient_data_labels = next(generate_training_batches(patient_objects, general_batch, labelset))
-        output_size = len(labelset)
         k_fold_crossvalidation_training(single_patient_data, single_patient_data_labels, hp, output_size, K)
     if mode == 2: # all patients
         general_patient_data, general_patient_data_labels, single_patient_data, single_patient_data_labels = next(generate_training_batches(patient_objects, general_batch, labelset))
-        output_size = len(labelset)
         k_fold_crossvalidation_training(general_patient_data, general_patient_data_labels, hp, K, output_size)
     if mode == 3: # comparing transfer learning with non-transfer learning
         acc_transfer_learning = []
         acc_non_transfer_learning = []
         for general_patient_data, general_patient_data_labels, single_patient_data, single_patient_data_labels in generate_training_batches(patient_objects, general_batch, labelset):
-            output_size = len(labelset)
             # transfer learning
             general_model = generate_trained_general_model(general_patient_data, general_patient_data_labels, hp, output_size)
-            number_of_frozen_layers = 5
             for layer in general_model.layers[:number_of_frozen_layers]:
                 layer.trainable = False
             acc_transfer_learning.append(k_fold_crossvalidation_training(single_patient_data, single_patient_data_labels, hp, output_size, K, general_model, verbose=0))

@@ -54,7 +54,6 @@ def hyperparameter_grid_builder():
     dropout_rates = [0.3, 0.5, 0.7]
     learning_rates = [0.001, 0.01, 0.1]
     loss_functions = ['categorical_crossentropy', 'mean_squared_error']
-    downsampling_rates = [0.0, 0.3, 0.6, 0.9]
 
     # hyperparameter combinations
     hp = []
@@ -66,8 +65,7 @@ def hyperparameter_grid_builder():
                     for dls in dense_layer_sizes:
                         for lr in learning_rates:
                             for lf in loss_functions:
-                                for ds in downsampling_rates:
-                                    hp.append([cfn, cks, ps, dr, dls, lr, lf, ds])
+                                hp.append([cfn, cks, ps, dr, dls, lr, lf])
 
     print(f'Number of hyperparameter combinations: {len(hp)}')
 
@@ -86,30 +84,24 @@ def main():
     hyperparameter_tuning = True # false = training
     use_general_dataset = True # set to false for single patient dataset
     random_search = False # false = exhaustive gridsearch
+    K = 10 # number of crossvalidation folds
     random_search_trials = 2
     csv_tuning_filename = 'hyperparameter_metrics.csv'
 
-    if use_general_dataset:
-        patient_data, _ = gen_tuning_batch(utils.pns, 5, 100, 0.8)
-        labels = [w.btype for w in patient_data]
-        labelset = list(set(labels))
-        print(f'Number of classes: {len(labelset)}')
-        labels = np.asarray(utils.annotations_to_signal(labels, labelset))
-        inputs = np.asarray([np.asarray(w.signal) for w in patient_data])
-        # Reshape to fit model
-        inputs = inputs.reshape(len(inputs), 114, 1)
-        out_channels = len(labelset)
+    patient_objects, labelset = select_patients(utils.pns, 5) #all patients with at least 5 classes
+    general_batch, labelset = gen_batch(patient_objects, labelset, 100, ds=0.8) #all classes with at least 100 samples
+    print(labelset)
+    print([p.number for p in patient_objects])
+    print(len(general_batch))
+    output_size = len(labelset)
+    general_patient_data, general_patient_data_labels, single_patient_data, single_patient_data_labels = next(generate_training_batches(patient_objects, general_batch, labelset))
 
+    if use_general_dataset:
+        inputs = general_patient_data
+        labels = general_patient_data_labels
     else:
-        # Inputs and labels from a preprocessed patient
-        patient_data = balance_patient(208, 0.1, 3)
-        labels = [w.btype for w in patient_data]
-        # one hot encoding
-        labels = np.asarray(utils.annotations_to_signal(labels, ["F", "V", "N"]))
-        inputs = np.asarray([np.asarray(w.signal) for w in patient_data])
-        # Reshape to fit model
-        inputs = inputs.reshape(len(inputs), 114, 1)
-        out_channels = 3
+        inputs = single_patient_data
+        labels = single_patient_data_labels
 
     if (hyperparameter_tuning):
         # hyperparameter gridsearch set-up
@@ -120,7 +112,7 @@ def main():
 
     else:
         # Set desired architecture
-        hp_grid = [[32, 7, 3, 0.5, 75, 0.1, 'categorical_crossentropy'] #best of tenfold gridsearch
+        hp_grid = [[32, 7, 3, 0.5, 75, 0.1, 'categorical_crossentropy']] #best of tenfold gridsearch
 
     # Initialize model (average) metrics and hp containers
     models_metrics = []
@@ -147,13 +139,13 @@ def main():
             fn_per_fold = []
 
             # Define the K-fold Cross Validator
-            kfold = KFold(n_splits=10, shuffle=True)
+            kfold = KFold(n_splits=K, shuffle=True)
 
             # K-fold Cross Validation model evaluation
             fold_no = 1
             for train, test in kfold.split(inputs, labels):
                 #build model
-                model = model_builder(hp, out_channels)
+                model = model_builder(hp, output_size)
 
                 model.fit(inputs[train], labels[train], epochs=3, batch_size=32, verbose=0) #tune batch size and epochs
 
