@@ -65,13 +65,27 @@ def generate_trained_general_model(inputs, labels, hp, output_size):
 
     return model
 
-def plot_box_and_whisker(transfer_learning_acc, non_transfer_learning_acc):
-    data = [transfer_learning_acc, non_transfer_learning_acc]
-
-    fig1, ax1 = plt.subplots()
-    ax1.set_title('10-fold Crossvalidation Accuracy: Transfer Learning vs Non-Transfer Learning')
-    ax1.boxplot(data)
-
+def plot_box_and_whisker(data_acc, data_sens, data_prec, data_f1):
+    fig1, axs = plt.subplots(2,2)
+    ticklabels = ['transfer learning', 'non transfer learning']
+    axs[0,0].set_title('Accuracy score', fontsize=19)
+    axs[0,0].boxplot(data_acc)
+    axs[0,0].set_xticklabels (ticklabels)
+    axs[0,0].set_ylabel ('score', fontsize=17)
+    axs[0,1].set_title('Sensitivity score', fontsize=19)
+    axs[0,1].boxplot(data_sens)
+    axs[0,1].set_xticklabels (ticklabels)
+    axs[0,1].set_ylabel ('score', fontsize=17)
+    axs[1,0].set_title('Precision score', fontsize=19)
+    axs[1,0].boxplot(data_prec)
+    axs[1,0].set_xticklabels (ticklabels)
+    axs[1,0].set_ylabel ('score', fontsize=17)
+    axs[1,1].set_title('F1 score', fontsize=19)
+    axs[1,1].boxplot(data_f1)
+    axs[1,1].set_xticklabels (ticklabels)
+    axs[1,1].set_ylabel ('score', fontsize=17)
+    fig1.suptitle ('100-fold Crossvalidation Accuracy: Transfer Learning vs Non-Transfer Learning', fontsize=21)
+    plt.savefig ('./results/plot.png')
     plt.show()
 
 
@@ -121,6 +135,9 @@ def k_fold_crossvalidation_training(inputs, labels, hp, output_size, K, model=No
     fp = np.mean(fp_per_fold)
     tn = np.mean(tn_per_fold)
     fn = np.mean(fn_per_fold)
+    avg_precision = tp/(tp+fp)
+    avg_sensitivity = tp/(tp+fn)
+    f1 = 2*(avg_sensitivity*avg_precision)/(avg_sensitivity+avg_precision)
 
     if verbose:
         print('------------------------------------------------------------------------')
@@ -136,12 +153,12 @@ def k_fold_crossvalidation_training(inputs, labels, hp, output_size, K, model=No
         model.summary()
         print('------------------------------------------------------------------------')
 
-    return average_acc
+    return average_acc, avg_precision, avg_sensitivity, f1
 
 def main():
     mode = 3 #0 = transfer_learning, 1 = single_patient, 2 = all_patients, 3 = transfer_learning vs non_transfer learning (single_patient)
     number_of_frozen_layers = 4 # only applicable in mode 0 and 3
-    K = 100 # number of folds for crossvalidation
+    K = 5 # number of folds for crossvalidation
 
 
     patient_objects, labelset = select_patients(utils.pns, 5) #all patients with at least 5 classes
@@ -173,25 +190,84 @@ def main():
     if mode == 3: # comparing transfer learning with non-transfer learning
         acc_transfer_learning = []
         acc_non_transfer_learning = []
+        precision_transfer_learning = []
+        precision_non_transfer_learning = []
+        sensitivity_transfer_learning = []
+        sensitivity_non_transfer_learning = []
+        f1_transfer_learning = []
+        f1_non_transfer_learning = []
+
         for general_patient_data, general_patient_data_labels, single_patient_data, single_patient_data_labels in generate_training_batches(patient_objects, general_batch, labelset):
             # transfer learning
             general_model = generate_trained_general_model(general_patient_data, general_patient_data_labels, hp, output_size)
             for layer in general_model.layers[:number_of_frozen_layers]:
                 layer.trainable = False
-            acc_transfer_learning.append(k_fold_crossvalidation_training(single_patient_data, single_patient_data_labels, hp, output_size, K, general_model, verbose=0))
+            tl_acc, tl_precision, tl_sensitivity, tl_f1 = k_fold_crossvalidation_training(single_patient_data,
+                                                                                   single_patient_data_labels,
+                                                                                   hp, output_size, K, general_model, verbose=0)
+            acc_transfer_learning.append (tl_acc)
+            precision_transfer_learning.append (tl_precision)
+            sensitivity_transfer_learning.append (tl_sensitivity)
+            f1_transfer_learning.append (tl_f1)
             # non-transfer learning
-            acc_non_transfer_learning.append(k_fold_crossvalidation_training(single_patient_data, single_patient_data_labels, hp, output_size, K, verbose=0))
+            ntl_acc, ntl_precision, ntl_sensitivity, ntl_f1 = k_fold_crossvalidation_training(single_patient_data,
+                                                                                  single_patient_data_labels,
+                                                                                  hp, output_size, K, verbose=0)
+            acc_non_transfer_learning.append (ntl_acc)
+            precision_non_transfer_learning.append (ntl_precision)
+            sensitivity_non_transfer_learning.append (ntl_sensitivity)
+            f1_non_transfer_learning.append (ntl_f1)
+
+
+
+        ### SAVE RESULTS
+        np.savetxt ('./results/acc_tl.csv', np.asarray (acc_transfer_learning), delimiter=',')
+        np.savetxt ('./results/acc_ntl.csv', np.asarray (acc_non_transfer_learning), delimiter=',')
+        np.savetxt ('./results/precision_tl.csv', np.asarray (precision_transfer_learning), delimiter=',')
+        np.savetxt ('./results/precision_ntl.csv', np.asarray (precision_non_transfer_learning), delimiter=',')
+        np.savetxt ('./results/sensitivity_tl.csv', np.asarray (sensitivity_transfer_learning), delimiter=',')
+        np.savetxt ('./results/sensitivity_ntl.csv', np.asarray (sensitivity_non_transfer_learning), delimiter=',')
+        np.savetxt ('./results/f1_tl.csv', np.asarray (f1_transfer_learning), delimiter=',')
+        np.savetxt ('./results/f1_ntl.csv', np.asarray (f1_non_transfer_learning), delimiter=',')
+        ### ACCURACY MEASURES
         avrg_acc_tl = np.mean(acc_transfer_learning)
         avrg_acc_tl_std = np.std(acc_transfer_learning)
         avrg_acc_ntl = np.mean(acc_non_transfer_learning)
         avrg_acc_ntl_std = np.std(acc_non_transfer_learning)
+        ### PRECISION MEASURES
+        avrg_precision_tl = np.mean(precision_transfer_learning)
+        avrg_precision_tl_std = np.std(precision_transfer_learning)
+        avrg_precision_ntl = np.mean(precision_non_transfer_learning)
+        avrg_precision_ntl_std = np.std(precision_non_transfer_learning)
+        ### SENSITIVITY MEASURES
+        avrg_sensitivity_tl = np.mean(sensitivity_transfer_learning)
+        avrg_sensitivity_tl_std = np.std(sensitivity_transfer_learning)
+        avrg_sensitivity_ntl = np.mean(sensitivity_non_transfer_learning)
+        avrg_sensitivity_ntl_std = np.std(sensitivity_non_transfer_learning)
+        ### F1 MEASURES
+        avrg_f1_tl = np.mean(f1_transfer_learning)
+        avrg_f1_tl_std = np.std(f1_transfer_learning)
+        avrg_f1_ntl = np.mean(f1_non_transfer_learning)
+        avrg_f1_ntl_std = np.std(f1_non_transfer_learning)
+        print('------------------------------------------------------------------------')
+        print('FINAL RESULTS:')
         print('------------------------------------------------------------------------')
         print(f'Number of cross-validation folds: {K}')
         print(f'Number of frozen layers: {number_of_frozen_layers}')
         print(f'Average transfer learning accuracy: {avrg_acc_tl} +- {avrg_acc_tl_std}')
         print(f'Average non_transfer learning accuracy: {avrg_acc_ntl} +- {avrg_acc_ntl_std}')
+        print(f'Average transfer learning precision: {avrg_precision_tl} +- {avrg_precision_tl_std}')
+        print(f'Average non_transfer learning precision: {avrg_precision_ntl} +- {avrg_precision_ntl_std}')
+        print(f'Average transfer learning sensitivity: {avrg_sensitivity_tl} +- {avrg_sensitivity_tl_std}')
+        print(f'Average non_transfer learning sensitivity: {avrg_sensitivity_ntl} +- {avrg_sensitivity_ntl_std}')
+        print(f'Average transfer learning F1-score: {avrg_f1_tl} +- {avrg_f1_tl_std}')
+        print(f'Average non_transfer learning F1-score: {avrg_f1_ntl} +- {avrg_f1_ntl_std}')
         print('------------------------------------------------------------------------')
-        plot_box_and_whisker(avrg_acc_tl, avrg_acc_ntl)
+        ### PLOT RESULTS
+        plot_box_and_whisker ([acc_transfer_learning, acc_non_transfer_learning],
+                              [precision_transfer_learning, precision_non_transfer_learning],
+                              [sensitivity_transfer_learning, sensitivity_non_transfer_learning],
+                              [f1_transfer_learning, f1_non_transfer_learning])
 
 
 
